@@ -64,17 +64,12 @@ export default function InstrumentPanel() {
     <aside className="instrument-panel">
       <div className="panel-header">Instruments (Drag &amp; Drop)</div>
       <ul className="instrument-list">
-        {instruments.map(({ id, label, Icon, meter }) => (
-          <li key={id} className={`instrument-row ${meter ? 'has-meter' : ''}`}>
+        {instruments.map(({ id, label, Icon }) => (
+          <li key={id} className="instrument-row">
             <div className="instrument-icon">
               <Icon />
             </div>
             <span className="instrument-label">{label}</span>
-            {meter && (
-              <div className="meter-badge">
-                <span>{meter}</span>
-              </div>
-            )}
           </li>
         ))}
       </ul>

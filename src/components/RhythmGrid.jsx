@@ -3,11 +3,11 @@ import './RhythmGrid.css'
 
 const TOTAL_STEPS = 16
 
-/* Bass: 3/16 grouping → groups of 3 steps */
-const BASS_GROUPS = [3, 3, 3, 3, 3, 1] // 5 full groups + 1 leftover across 16
+/* Guest: 3/16 grouping → groups of 3 steps */
+const GUEST_GROUPS = [3, 3, 3, 3, 3, 1] // 5 full groups + 1 leftover across 16
 
-/* Keyboard: 4/4 grouping → groups of 4 */
-const KB_GROUPS = [4, 4, 4, 4]
+/* Host: 4/4 grouping → groups of 4 */
+const HOST_GROUPS = [4, 4, 4, 4]
 
 function buildGroups(groupSizes) {
   const groups = []
@@ -22,12 +22,12 @@ function buildGroups(groupSizes) {
   return groups
 }
 
-const bassGroups = buildGroups(BASS_GROUPS)
-const kbGroups   = buildGroups(KB_GROUPS)
+const guestGroups = buildGroups(GUEST_GROUPS)
+const hostGroups   = buildGroups(HOST_GROUPS)
 
 /* Column beat markers — which steps are "beat 1" of a bar/group */
-const bassBeats = new Set(bassGroups.map(g => g[0]))
-const kbBeats   = new Set(kbGroups.map(g => g[0]))
+const guestBeats = new Set(guestGroups.map(g => g[0]))
+const hostBeats   = new Set(hostGroups.map(g => g[0]))
 
 export default function RhythmGrid() {
   return (
@@ -39,7 +39,7 @@ export default function RhythmGrid() {
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              className={`col-guide ${bassBeats.has(i + 1) ? 'beat-bass' : ''} ${kbBeats.has(i + 1) ? 'beat-kb' : ''} ${i === 0 ? 'playhead' : ''}`}
+              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${i === 0 ? 'playhead' : ''}`}
             />
           ))}
         </div>
@@ -58,18 +58,23 @@ export default function RhythmGrid() {
             </div>
           ))}
 
-          {/* Bass row (3/16) */}
-          <div className="track-row track-row--bass">
+          {/* Guest row (3/16) */}
+          <div className="track-row track-row--guest">
             <div className="track-cells">
-              {bassGroups.map((group, gi) => (
+              {guestGroups.map((group, gi) => (
                 <div
                   key={gi}
-                  className="block block--bass"
+                  className="block block--guest"
                   style={{ '--span': group.length }}
                 >
+                  {gi === 0 && (
+                    <div className="meter-badge meter-badge--guest">
+                      <span>3/16</span>
+                    </div>
+                  )}
                   <div className="block-nubs">
                     {group.map((step, si) => (
-                      <div key={si} className="nub nub--bass" />
+                      <div key={si} className="nub nub--guest" />
                     ))}
                   </div>
                   <div className="block-body" />
@@ -87,18 +92,23 @@ export default function RhythmGrid() {
             </div>
           </div>
 
-          {/* Keyboard row (4/4) */}
-          <div className="track-row track-row--keyboard">
+          {/* Host row (4/4) */}
+          <div className="track-row track-row--host">
             <div className="track-cells">
-              {kbGroups.map((group, gi) => (
+              {hostGroups.map((group, gi) => (
                 <div
                   key={gi}
-                  className="block block--keyboard"
+                  className="block block--host"
                   style={{ '--span': group.length }}
                 >
+                  {gi === 0 && (
+                    <div className="meter-badge meter-badge--host">
+                      <span>4/4</span>
+                    </div>
+                  )}
                   <div className="block-nubs">
                     {group.map((step, si) => (
-                      <div key={si} className="nub nub--keyboard" />
+                      <div key={si} className="nub nub--host" />
                     ))}
                   </div>
                   <div className="block-body" />

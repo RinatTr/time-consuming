@@ -32,8 +32,8 @@
   opacity: 0.5;
 }
 
-.col-guide.beat-bass  { border-right-color: rgba(249, 115, 22, 0.18); }
-.col-guide.beat-kb    { border-right-color: rgba(168, 85, 247, 0.18); }
+.col-guide.beat-guest  { border-right-color: rgba(249, 115, 22, 0.18); }
+.col-guide.beat-host    { border-right-color: rgba(168, 85, 247, 0.18); }
 .col-guide.playhead   {
   background: rgba(56, 189, 248, 0.06);
   border-right: none;
@@ -73,8 +73,8 @@
 }
 
 /* ── Shared track cells for blocks ── */
-.track-row--bass .track-cells,
-.track-row--keyboard .track-cells {
+.track-row--guest .track-cells,
+.track-row--host .track-cells {
   display: flex;
   align-items: stretch;
   width: 100%;
@@ -115,16 +115,16 @@
   border-radius: 0 0 4px 4px;
 }
 
-/* ── Bass colour (orange → red) ── */
-.block--bass {
+/* ── Guest colour (orange → red) ── */
+.block--guest {
   filter: drop-shadow(0 0 8px var(--bass-glow));
 }
 
-.nub--bass {
+.nub--guest {
   background: linear-gradient(180deg, #fbbf5a 0%, var(--bass-start) 100%);
 }
 
-.block--bass .block-body {
+.block--guest .block-body {
   background: linear-gradient(
     90deg,
     var(--bass-start) 0%,
@@ -135,35 +135,55 @@
 }
 
 /* Override per group index via JS inline var */
-.block--bass:nth-child(1) .block-body { background: linear-gradient(90deg, #f97316, #f86b1a); }
-.block--bass:nth-child(2) .block-body { background: linear-gradient(90deg, #f86119, #f55018); }
-.block--bass:nth-child(3) .block-body { background: linear-gradient(90deg, #f55018, #f24020); }
-.block--bass:nth-child(4) .block-body { background: linear-gradient(90deg, #f24020, #ef3325); }
-.block--bass:nth-child(5) .block-body { background: linear-gradient(90deg, #ef3325, #ef2222); }
-.block--bass:nth-child(6) .block-body { background: #ef4444; }
+.block--guest:nth-child(1) .block-body { background: linear-gradient(90deg, #f97316, #f86b1a); }
+.block--guest:nth-child(2) .block-body { background: linear-gradient(90deg, #f86119, #f55018); }
+.block--guest:nth-child(3) .block-body { background: linear-gradient(90deg, #f55018, #f24020); }
+.block--guest:nth-child(4) .block-body { background: linear-gradient(90deg, #f24020, #ef3325); }
+.block--guest:nth-child(5) .block-body { background: linear-gradient(90deg, #ef3325, #ef2222); }
+.block--guest:nth-child(6) .block-body { background: #ef4444; }
 
-.nub--bass:nth-child(1) { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
-.nub--bass:nth-child(2) { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
-.nub--bass:nth-child(3) { background: linear-gradient(180deg, #f8a060 0%, #f84000 100%); }
+.nub--guest:nth-child(1) { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
+.nub--guest:nth-child(2) { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
+.nub--guest:nth-child(3) { background: linear-gradient(180deg, #f8a060 0%, #f84000 100%); }
 
-/* ── Keyboard colour (blue → violet) ── */
-.block--keyboard {
+/* ── Host colour (blue → violet) ── */
+.block--host {
   filter: drop-shadow(0 0 8px var(--kb-glow));
 }
 
-.nub--keyboard {
+.nub--host {
   background: linear-gradient(180deg, #818cf8 0%, var(--kb-start) 100%);
 }
 
-.block--keyboard:nth-child(1) .block-body { background: #3b3fce; }
-.block--keyboard:nth-child(2) .block-body { background: #6244be; }
-.block--keyboard:nth-child(3) .block-body { background: #8649ae; }
-.block--keyboard:nth-child(4) .block-body { background: #a855f7; }
+.block--host:nth-child(1) .block-body { background: #3b3fce; }
+.block--host:nth-child(2) .block-body { background: #6244be; }
+.block--host:nth-child(3) .block-body { background: #8649ae; }
+.block--host:nth-child(4) .block-body { background: #a855f7; }
 
-.block--keyboard:nth-child(1) .nub--keyboard { background: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%); }
-.block--keyboard:nth-child(2) .nub--keyboard { background: linear-gradient(180deg, #9880f0 0%, #6244be 100%); }
-.block--keyboard:nth-child(3) .nub--keyboard { background: linear-gradient(180deg, #b070e8 0%, #8649ae 100%); }
-.block--keyboard:nth-child(4) .nub--keyboard { background: linear-gradient(180deg, #d070f8 0%, #a855f7 100%); }
+.block--host:nth-child(1) .nub--host { background: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%); }
+.block--host:nth-child(2) .nub--host { background: linear-gradient(180deg, #9880f0 0%, #6244be 100%); }
+.block--host:nth-child(3) .nub--host { background: linear-gradient(180deg, #b070e8 0%, #8649ae 100%); }
+.block--host:nth-child(4) .nub--host { background: linear-gradient(180deg, #d070f8 0%, #a855f7 100%); }
+
+/* ── Meter badges ── */
+.meter-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 4px 8px;
+  z-index: 10;
+}
+
+.meter-badge span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.02em;
+}
 
 /* ── Step ruler ── */
 .step-ruler {
