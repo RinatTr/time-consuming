@@ -96,15 +96,16 @@
 .block-nubs {
   display: flex;
   gap: 2px;
-  padding: 0 3px;
+  padding: 0 1px;
   height: 10px;
   align-items: flex-end;
+  justify-content: space-around;
   position: relative;
   z-index: 2;
 }
 
 .nub {
-  flex: 1;
+  width: 32px;
   height: 8px;
   border-radius: 3px 3px 0 0;
 }

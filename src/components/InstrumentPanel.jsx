@@ -21,12 +21,13 @@ const HiHatIcon = () => (
 
 const BassIcon = () => (
   <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="7" width="26" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
-    <rect x="6" y="10" width="4" height="6" rx="0.5" fill="currentColor" opacity="0.7" />
-    <rect x="12" y="10" width="4" height="6" rx="0.5" fill="currentColor" opacity="0.7" />
-    <rect x="18" y="10" width="4" height="6" rx="0.5" fill="currentColor" opacity="0.7" />
-    <line x1="6" y1="19" x2="26" y2="19" stroke="currentColor" strokeWidth="1" opacity="0.4" />
-    <line x1="6" y1="22" x2="26" y2="22" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+    <path d="M12.8,21.8L12.8,21.8c-1.7-1.4-2.3-3.8-1.5-5.9l4.1-10.7C16.3,3,19,2.3,20.8,3.8l0,0c1.4,1.2,1.6,3.3,0.5,4.7l-1.1,1.5l1.4,6.2c0.4,1.9-0.2,3.9-1.7,5.1l-0.4,0.4C17.5,23.4,14.7,23.4,12.8,21.8z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="14" y1="29" x2="14" y2="22.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="19" y1="22.1" x2="19" y2="29" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="9.6" y1="14.9" x2="11.4" y2="15.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="10.6" y1="11.9" x2="12.5" y2="12.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="11.6" y1="8.9" x2="13.6" y2="9.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="12.6" y1="5.9" x2="14.8" y2="6.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 

@@ -8,7 +8,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">2D Rhythmic Grid with Meter Labels</h1>
+        <h1 className="app-title">Playground</h1>
       </header>
 
       <div className="app-workspace">
