@@ -52,11 +52,11 @@ const KeyboardIcon = () => (
 )
 
 const instruments = [
-  { id: 'snare',    label: 'Snare',    Icon: SnareIcon },
+  { id: 'snare',   label: 'Snare',    Icon: SnareIcon },
   { id: 'hihat',   label: 'Hi-Hat',   Icon: HiHatIcon },
-  { id: 'bass',    label: 'Bass',     Icon: BassIcon,    meter: '3/16' },
+  { id: 'guest',   label: 'Guest',    Icon: BassIcon },
   { id: 'kick',    label: 'Kick',     Icon: KickIcon },
-  { id: 'keyboard',label: 'Keyboard', Icon: KeyboardIcon, meter: '4/4' },
+  { id: 'host',    label: 'Host',     Icon: KeyboardIcon },
 ]
 
 export default function InstrumentPanel() {

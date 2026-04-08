@@ -1,4 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useAudioSequencer } from '../hooks/useAudioSequencer'
+import { usePlayheadTracking } from '../hooks/usePlayheadTracking'
 import './RhythmGrid.css'
 
 const TOTAL_STEPS = 16
@@ -30,17 +32,19 @@ const guestBeats = new Set(guestGroups.map(g => g[0]))
 const hostBeats   = new Set(hostGroups.map(g => g[0]))
 
 export default function RhythmGrid() {
+  const { currentStep } = useAudioSequencer()
+  usePlayheadTracking(currentStep)
+
   return (
     <div className="rhythm-grid-wrapper">
-      <div className="rhythm-grid">
+      <div className="rhythm-grid" data-current-step={currentStep}>
 
         {/* ── Column guide lines ── */}
         <div className="column-guides" aria-hidden="true">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
-              // Add classes for guest/host beats and playhead (first step). playhead only for demo, need to sync with actual playback position.
-              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${i === 0 ? 'playhead' : ''}`}
+              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${i === currentStep ? 'playhead' : ''}`}
             />
           ))}
         </div>
