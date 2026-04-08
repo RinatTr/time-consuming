@@ -35,7 +35,7 @@
 .col-guide.beat-guest  { border-right-color: rgba(249, 115, 22, 0.18); }
 .col-guide.beat-host    { border-right-color: rgba(168, 85, 247, 0.18); }
 .col-guide.playhead   {
-  background: rgba(56, 189, 248, 0.06);
+  background: rgba(56, 189, 248, 0.20);
   border-right: none;
 }
 

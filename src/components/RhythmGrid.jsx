@@ -39,6 +39,7 @@ export default function RhythmGrid() {
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
               key={i}
+              // Add classes for guest/host beats and playhead (first step). playhead only for demo, need to sync with actual playback position.
               className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${i === 0 ? 'playhead' : ''}`}
             />
           ))}
