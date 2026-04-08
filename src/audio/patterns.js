@@ -25,8 +25,8 @@ export const PATTERNS = {
       true, false, true, false,
       true, false, true, false,
     ],
-    guest: new Array(16).fill(false), // No bass pattern
-    host: new Array(16).fill(false),  // No keyboard pattern
+    bass: new Array(16).fill(false),
+    keys: new Array(16).fill(false),  // No keyboard pattern
   },
 
   // Techno/House pattern
@@ -49,13 +49,13 @@ export const PATTERNS = {
       true, true, true, true,
       true, true, true, true,
     ],
-    guest: [
+    bass: [
       true, false, false, false,
       false, false, true, false,
       true, false, false, false,
       false, false, true, false,
     ],
-    host: new Array(16).fill(false),
+    keys: new Array(16).fill(false),
   },
 
   // Hip-hop/Boom-bap pattern
@@ -78,11 +78,21 @@ export const PATTERNS = {
       true, false, true, false,
       true, false, true, false,
     ],
-    guest: new Array(16).fill(false),
-    host: new Array(16).fill(false),
+    bass: [
+        false, false, true, false,
+        false, false, false, false,
+        true, false, false, true,
+        false, false, false, false,
+    ],
+    keys: [
+        false, false, false, false,
+        false, false, false, false,
+        false, false, false, false,
+        false, false, false, true,
+    ],
   },
 
-  // Polyrhythmic: 3/4 guest pattern over 4/4 host
+  // Polyrhythmic: 3/4 bass pattern over 4/4 keys
   polyrhythmic: {
     kick: [
       true, false, false, false,
@@ -90,15 +100,8 @@ export const PATTERNS = {
       true, false, false, false,
       true, false, false, false,
     ],
-    snare: new Array(16).fill(false),
-    hihat: [
-      true, false, true, false,
-      true, false, true, false,
-      true, false, true, false,
-      true, false, true, false,
-    ],
-    // 3/16 pattern (3-beat groups)
-    guest: [
+    // hihat: new Array(16).fill(false),  // Constant hi-hat on every step
+    snare: [
       true, false, false,
       true, false, false,
       true, false, false,
@@ -106,8 +109,15 @@ export const PATTERNS = {
       true, false, false,
       true, // 6 groups of 3 = 16 steps + 1
     ],
+    bass: new Array(16).fill(false),
+    hihat: [
+      false, false, true, false,
+      false, false, true, false,
+      false, false, true, false,
+      false, false, true, false,
+    ],
     // 4/4 pattern (4-beat groups)
-    host: [
+    keys: [
       true, false, false, false,
       false, false, false, false,
       true, false, false, false,
@@ -120,8 +130,8 @@ export const PATTERNS = {
     kick: new Array(16).fill(false),
     snare: new Array(16).fill(false),
     hihat: new Array(16).fill(false),
-    guest: new Array(16).fill(false),
-    host: new Array(16).fill(false),
+    bass: new Array(16).fill(false),
+    keys: new Array(16).fill(false),
   },
 
   // Random 50% fill
@@ -129,8 +139,8 @@ export const PATTERNS = {
     kick: Array.from({ length: 16 }, () => Math.random() > 0.5),
     snare: Array.from({ length: 16 }, () => Math.random() > 0.5),
     hihat: Array.from({ length: 16 }, () => Math.random() > 0.5),
-    guest: Array.from({ length: 16 }, () => Math.random() > 0.5),
-    host: Array.from({ length: 16 }, () => Math.random() > 0.5),
+    bass: Array.from({ length: 16 }, () => Math.random() > 0.5),
+    keys: Array.from({ length: 16 }, () => Math.random() > 0.5),
   },
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import DrumMachine from '../audio/DrumMachine'
+import { loadPattern, PATTERNS } from '../audio/patterns'
 
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
@@ -23,6 +24,9 @@ export function useAudioSequencer() {
       await DrumMachine.initialize()
       setIsInitialized(true)
       setBpm(DrumMachine.getBPM())
+      //this sets the pattern for one instrument. to set all instruments at once for the pattern, 
+      loadPattern('polyrhythmic', DrumMachine)
+
     } catch (error) {
       console.error('Failed to initialize audio:', error)
       initializingRef.current = false

@@ -38,6 +38,7 @@ class DrumMachine {
 
   /**
    * Initialize the audio context and create synths.
+   * the bpm and time signature are hard coded but configured through the ui controls
    * Must be called after a user gesture (e.g., Play button click).
    */
   async initialize() {
@@ -106,17 +107,17 @@ class DrumMachine {
     }).toDestination()
 
     // --- Hi-Hat --- 
-    this.synths.hihat = new Tone.MetalSynth({
-      frequency: 200,
-      envelope: {
-        attack: 0.001,
-        decay: 0.05,
-        release: 0.01,
-      },
-      harmonicity: 12,
-      resonance: 3000,
-      volume: -10,
-    }).toDestination()
+    this.synths.hihat = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: {
+            attack: 0.001,
+            decay: 0.03,
+            sustain: 0,
+        },
+        volume: -8,
+        }).connect(
+        new Tone.Filter({ frequency: 8000, type: 'highpass' }).toDestination()
+        )
 
     // --- Bass ---
     this.synths.bass = new Tone.PolySynth(Tone.Synth, {

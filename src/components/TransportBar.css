@@ -35,6 +35,22 @@
   font-size: 14px;
   color: var(--text-primary);
   min-width: 28px;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  flex: 0 0 auto;
+  width: 45px;
+  padding: 0 4px;
+  transition: color 0.12s;
+}
+
+.bpm-value:focus {
+  color: var(--accent);
+}
+
+.bpm-value::selection {
+  background: rgba(56, 189, 248, 0.3);
 }
 
 .bpm-arrows {
