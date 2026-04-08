@@ -45,6 +45,17 @@
   cursor: grabbing;
 }
 
+.instrument-row.active {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.instrument-row.active .instrument-icon {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-surface);
+  animation: preview-pulse 0.2s ease-out;
+}
+
 .instrument-icon {
   width: 38px;
   height: 38px;
@@ -76,4 +87,15 @@
   letter-spacing: 0.04em;
   color: var(--text-primary);
   flex: 1;
+}
+
+@keyframes preview-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
 }

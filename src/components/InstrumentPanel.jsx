@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useAudioSequencer } from '../hooks/useAudioSequencer'
 import './InstrumentPanel.css'
 
 const SnareIcon = () => (
@@ -54,18 +55,44 @@ const KeyboardIcon = () => (
 const instruments = [
   { id: 'snare',   label: 'Snare',    Icon: SnareIcon },
   { id: 'hihat',   label: 'Hi-Hat',   Icon: HiHatIcon },
-  { id: 'guest',   label: 'Guest',    Icon: BassIcon },
+  { id: 'bass',   label: 'Bass',    Icon: BassIcon },
   { id: 'kick',    label: 'Kick',     Icon: KickIcon },
-  { id: 'host',    label: 'Host',     Icon: KeyboardIcon },
+  { id: 'keys',    label: 'Keys',     Icon: KeyboardIcon },
 ]
 
 export default function InstrumentPanel() {
+  const { drumMachine } = useAudioSequencer()
+  const [activeInstrument, setActiveInstrument] = useState(null)
+
+  const handleInstrumentClick = async (instrumentId) => {
+    try {
+      // Ensure audio is initialized (lazy init on first interaction)
+      if (!drumMachine.isInitialized) {
+        await drumMachine.initialize()
+      }
+
+      // Trigger the sound preview
+      drumMachine.triggerDrum(instrumentId)
+
+      // Visual feedback: highlight the clicked instrument briefly
+      setActiveInstrument(instrumentId)
+      setTimeout(() => setActiveInstrument(null), 200)
+    } catch (error) {
+      console.error(`Failed to preview instrument "${instrumentId}":`, error)
+    }
+  }
+
   return (
     <aside className="instrument-panel">
       <div className="panel-header">Instruments (Drag &amp; Drop)</div>
       <ul className="instrument-list">
         {instruments.map(({ id, label, Icon }) => (
-          <li key={id} className="instrument-row">
+          <li
+            key={id}
+            className={`instrument-row ${activeInstrument === id ? 'active' : ''}`}
+            onClick={() => handleInstrumentClick(id)}
+            title={`Click to preview ${label}`}
+          >
             <div className="instrument-icon">
               <Icon />
             </div>

@@ -9,47 +9,44 @@ class DrumMachine {
     this.isInitialized = false
     this.isPlaying = false
     this.currentStep = 0
-    this.stepCallbacks = [] // Callbacks for UI playhead updates
+    this.stepCallbacks = []
 
-    // Sound sources
     this.synths = {
       kick: null,
       snare: null,
+      snareBody: null, // internal — layered with snare, not a separate grid track
       hihat: null,
-      guest: null, // Guest = Bass in your UI
-      host: null,   // Host = Keyboard in your UI
+      bass: null,
+      keys: null,
     }
 
-    // Sequence tracking
+    // Intermediate routing nodes that need explicit disposal
+    this.nodes = {
+      snareHPF: null,
+    }
+
     this.sequence = null
     this.gridState = {
       kick: new Array(16).fill(false),
       snare: new Array(16).fill(false),
       hihat: new Array(16).fill(false),
-      guest: new Array(16).fill(false),
-      host: new Array(16).fill(false),
+      bass: new Array(16).fill(false),
+      keys: new Array(16).fill(false),
     }
   }
 
   /**
-   * Initialize the audio context and create synths
-   * Must be called after a user gesture (e.g., Play button click)
+   * Initialize the audio context and create synths.
+   * Must be called after a user gesture (e.g., Play button click).
    */
   async initialize() {
     if (this.isInitialized) return
 
     try {
-      // Initialize Tone.js audio context
       await Tone.start()
-      console.log('Tone.js audio context started')
-
-      // Set up Transport
-      Tone.Transport.bpm.value = 120
-      Tone.Transport.timeSignature = [4, 4]
-
-      // Create sound sources
+      Tone.getTransport().bpm.value = 120
+      Tone.getTransport().timeSignature = [4, 4]
       this.createSynths()
-
       this.isInitialized = true
       console.log('DrumMachine initialized')
     } catch (error) {
@@ -59,10 +56,10 @@ class DrumMachine {
   }
 
   /**
-   * Create all synthesizers and drums
+   * Create all synthesizers and routing nodes.
    */
   createSynths() {
-    // Kick drum - deep, punchy bass
+    // --- Kick ---
     this.synths.kick = new Tone.MembraneSynth({
       pitchDecay: 0.08,
       octaves: 6,
@@ -75,18 +72,39 @@ class DrumMachine {
       },
     }).toDestination()
 
-    // Snare - noise-based
+    // --- Snare ---
+    // HPF stored on this.nodes so it gets properly disposed
+    this.nodes.snareHPF = new Tone.Filter({
+      frequency: 1800,
+      type: 'highpass',
+      rolloff: -12,
+    }).toDestination()
+
+    // White noise layer — snare wire rattle
     this.synths.snare = new Tone.NoiseSynth({
-      type: 'pink',
+      noise: { type: 'white' },
       envelope: {
         attack: 0.001,
-        decay: 0.15,
+        decay: 0.18,
         sustain: 0,
         release: 0.05,
       },
+      volume: -6,
+    }).connect(this.nodes.snareHPF)
+
+    // Tonal body layer — shell resonance, triggered alongside snare noise
+    this.synths.snareBody = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: {
+        attack: 0.001,
+        decay: 0.08,
+        sustain: 0,
+        release: 0.01,
+      },
+      volume: -14,
     }).toDestination()
 
-    // Hi-Hat - short, bright noise
+    // --- Hi-Hat ---
     this.synths.hihat = new Tone.MetalSynth({
       frequency: 200,
       envelope: {
@@ -99,8 +117,8 @@ class DrumMachine {
       volume: -10,
     }).toDestination()
 
-    // Guest (Bass) - low synth pad
-    this.synths.guest = new Tone.PolySynth(Tone.Synth, {
+    // --- Bass ---
+    this.synths.bass = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
       envelope: {
         attack: 0.01,
@@ -110,8 +128,8 @@ class DrumMachine {
       },
     }).toDestination()
 
-    // Host (Keyboard) - bright melodic synth
-    this.synths.host = new Tone.PolySynth(Tone.Synth, {
+    // --- Keys ---
+    this.synths.keys = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'square' },
       envelope: {
         attack: 0.005,
@@ -123,44 +141,39 @@ class DrumMachine {
   }
 
   /**
-   * Trigger a drum sound by instrument name
+   * Trigger a drum sound by instrument name.
+   * Accepts an optional scheduled `time` from the Tone.js audio clock.
+   * Falls back to Tone.now() for manual/preview triggers (e.g. pad clicks).
    */
-  triggerDrum(instrumentName) {
+  triggerDrum(instrumentName, time = Tone.now()) {
     if (!this.isInitialized) return
-
-    const synth = this.synths[instrumentName]
-    if (!synth) {
-      console.warn(`Instrument not found: ${instrumentName}`)
-      return
-    }
-
-    const now = Tone.now()
 
     switch (instrumentName) {
       case 'kick':
-        synth.triggerAttackRelease('C1', '0.5', now)
+        this.synths.kick.triggerAttackRelease('C1', '0.5', time)
         break
       case 'snare':
-        synth.triggerAttackRelease('32n', now)
+        // Both layers triggered at the same scheduled time
+        this.synths.snare.triggerAttackRelease('16n', time)
+        this.synths.snareBody.triggerAttackRelease(['D2', 'E3'], '32n', time)
         break
       case 'hihat':
-        synth.triggerAttackRelease('16n', now)
+        this.synths.hihat.triggerAttackRelease('16n', time)
         break
-      case 'guest':
-        // Bass - play a low note
-        synth.triggerAttackRelease('C2', '0.25', now)
+      case 'bass':
+        this.synths.bass.triggerAttackRelease('C2', '0.25', time)
         break
-      case 'host':
-        // Keyboard - play a melodic note
-        synth.triggerAttackRelease('G3', '0.25', now)
+      case 'keys':
+        this.synths.keys.triggerAttackRelease('G3', '0.25', time)
         break
       default:
+        console.warn(`Instrument not found: ${instrumentName}`)
         break
     }
   }
 
   /**
-   * Set the state of a grid cell (step/instrument)
+   * Set the state of a grid cell.
    */
   setGridCell(instrumentName, step, isActive) {
     if (this.gridState[instrumentName] === undefined) return
@@ -168,48 +181,50 @@ class DrumMachine {
   }
 
   /**
-   * Get the state of a grid cell
+   * Get the state of a grid cell.
    */
   getGridCell(instrumentName, step) {
     return this.gridState[instrumentName]?.[step] ?? false
   }
 
   /**
-   * Create and start the 16-step sequence
+   * Create and start the 16-step sequence.
    */
   startSequence() {
     if (!this.isInitialized) return
 
-    // Stop any existing sequence
     if (this.sequence) {
       this.sequence.dispose()
     }
 
-    // Create 16-step sequence
     const steps = Array.from({ length: 16 }, (_, i) => i)
+
     this.sequence = new Tone.Sequence(
       (time, step) => {
-        this.currentStep = step
-        this.notifyStepChange(step)
+        // Update playhead via Tone.Draw — defers UI callback out of
+        // the audio scheduling path to avoid blocking the scheduler
+        Tone.getDraw().schedule(() => {
+          this.currentStep = step
+          this.notifyStepChange(step)
+        }, time)
 
-        // Trigger all active instruments for this step
+        // Trigger active instruments using the scheduled time directly —
+        // no secondary schedule() wrapper needed inside a Sequence callback
         Object.keys(this.gridState).forEach((instrumentName) => {
           if (this.gridState[instrumentName][step]) {
-            Tone.Transport.schedule(() => {
-              this.triggerDrum(instrumentName)
-            }, time)
+            this.triggerDrum(instrumentName, time)
           }
         })
       },
       steps,
-      '16n' // 16th note subdivisions
+      '16n'
     )
 
     this.sequence.start(0)
   }
 
   /**
-   * Start playback
+   * Start playback.
    */
   play() {
     if (!this.isInitialized) {
@@ -219,19 +234,19 @@ class DrumMachine {
 
     if (!this.isPlaying) {
       this.startSequence()
-      Tone.Transport.start()
+      Tone.getTransport().start()
       this.isPlaying = true
       console.log('Playback started')
     }
   }
 
   /**
-   * Stop playback
+   * Stop playback.
    */
   stop() {
     if (this.isPlaying) {
-      Tone.Transport.stop()
-      Tone.Transport.position = 0
+      Tone.getTransport().stop()
+      Tone.getTransport().position = 0
       this.currentStep = 0
       this.notifyStepChange(0)
       this.isPlaying = false
@@ -240,52 +255,47 @@ class DrumMachine {
   }
 
   /**
-   * Set BPM
+   * Set BPM.
    */
   setBPM(bpm) {
     if (this.isInitialized) {
-      Tone.Transport.bpm.value = Math.max(20, Math.min(300, bpm))
+      Tone.getTransport().bpm.value = Math.max(20, Math.min(300, bpm))
     }
   }
 
   /**
-   * Get current BPM
+   * Get current BPM.
    */
   getBPM() {
-    return Tone.Transport.bpm.value
+    return Tone.getTransport().bpm.value
   }
 
   /**
-   * Register a callback for step changes (for UI playhead tracking)
+   * Register a callback for step changes (UI playhead tracking).
    */
   onStepChange(callback) {
     this.stepCallbacks.push(callback)
   }
 
   /**
-   * Notify all listeners of step change
+   * Notify all listeners of a step change.
    */
   notifyStepChange(step) {
     this.stepCallbacks.forEach((callback) => callback(step))
   }
 
   /**
-   * Dispose and clean up
+   * Dispose and clean up all synths and routing nodes.
    */
   dispose() {
-    if (this.sequence) {
-      this.sequence.dispose()
-    }
-    Object.values(this.synths).forEach((synth) => {
-      if (synth) synth.dispose()
-    })
-    if (this.isPlaying) {
-      this.stop()
-    }
+    if (this.isPlaying) this.stop()
+    if (this.sequence) this.sequence.dispose()
+    Object.values(this.synths).forEach((synth) => synth?.dispose())
+    Object.values(this.nodes).forEach((node) => node?.dispose())
   }
 
   /**
-   * Get playback state
+   * Get playback state snapshot.
    */
   getPlaybackState() {
     return {
@@ -296,7 +306,7 @@ class DrumMachine {
   }
 
   /**
-   * Update grid state for multiple steps at once
+   * Overwrite grid state for an instrument with a full pattern.
    */
   setGridPattern(instrumentName, pattern) {
     if (this.gridState[instrumentName]) {
@@ -305,12 +315,11 @@ class DrumMachine {
   }
 
   /**
-   * Get grid state for an instrument
+   * Get a copy of the grid pattern for an instrument.
    */
   getGridPattern(instrumentName) {
     return this.gridState[instrumentName] ? [...this.gridState[instrumentName]] : []
   }
 }
 
-// Export singleton instance
 export default new DrumMachine()
