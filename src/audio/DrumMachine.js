@@ -23,6 +23,7 @@ class DrumMachine {
     // Intermediate routing nodes that need explicit disposal
     this.nodes = {
       snareHPF: null,
+      keysChorus: null,
     }
 
     this.sequence = null
@@ -104,7 +105,7 @@ class DrumMachine {
       volume: -14,
     }).toDestination()
 
-    // --- Hi-Hat ---
+    // --- Hi-Hat --- 
     this.synths.hihat = new Tone.MetalSynth({
       frequency: 200,
       envelope: {
@@ -128,16 +129,30 @@ class DrumMachine {
       },
     }).toDestination()
 
-    // --- Keys ---
+    // --- Keys (EP) ---
+    // Slow chorus for classic Rhodes shimmer — stored in this.nodes for disposal
+    this.nodes.keysChorus = new Tone.Chorus({
+      frequency: 3.5,  // slow, warm modulation
+      delayTime: 0.5,
+      depth: 0.4,
+      wet: 0.4,
+    }).toDestination().start()
+
+    // fatsine layering 3 detuned sines — mimics the soft tine character of a Rhodes
     this.synths.keys = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'square' },
-      envelope: {
-        attack: 0.005,
-        decay: 0.1,
-        sustain: 0.3,
-        release: 0.3,
+      oscillator: {
+        type: 'fatsine',
+        count: 3,   // 3 slightly detuned sine voices layered
+        spread: 20, // subtle detune spread in cents
       },
-    }).toDestination()
+      envelope: {
+        attack: 0.02,  // slight bloom
+        decay: 0.4,    // longer decay for EP character
+        sustain: 0.2,
+        release: 0.8,  // ring out naturally
+      },
+      volume: -8,
+    }).connect(this.nodes.keysChorus)
   }
 
   /**
@@ -157,14 +172,14 @@ class DrumMachine {
         this.synths.snare.triggerAttackRelease('16n', time)
         this.synths.snareBody.triggerAttackRelease(['D2', 'E3'], '32n', time)
         break
-      case 'hihat':
+      case 'hihat': 
         this.synths.hihat.triggerAttackRelease('16n', time)
         break
       case 'bass':
         this.synths.bass.triggerAttackRelease('C2', '0.25', time)
         break
       case 'keys':
-        this.synths.keys.triggerAttackRelease('G3', '0.25', time)
+        this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], '8n', time)
         break
       default:
         console.warn(`Instrument not found: ${instrumentName}`)
