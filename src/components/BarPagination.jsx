@@ -18,11 +18,11 @@ export function BarPagination({ barCount, activeBarIndex, onPrev, onNext, isPlay
         disabled={!canPrev}
         title="Previous bar"
       >
-        ← Prev
+        ←
       </button>
 
       <span className="bar-counter">
-        {activeBarIndex + 1} / {barCount}
+        {activeBarIndex + 1} | {barCount}
       </span>
 
       <button
@@ -31,7 +31,7 @@ export function BarPagination({ barCount, activeBarIndex, onPrev, onNext, isPlay
         disabled={!canNext}
         title="Next bar"
       >
-        Next →
+        →
       </button>
     </div>
   )

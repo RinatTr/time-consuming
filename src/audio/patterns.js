@@ -109,7 +109,12 @@ export const PATTERNS = {
       true, false, false,
       true, // 6 groups of 3 = 16 steps + 1
     ],
-    bass: new Array(16).fill(false),
+    bass: [
+      true, false, false, false,
+      false, false, false, false,
+      false, false, true, false,
+      false, false, false, false,
+    ],
     hihat: [
       false, false, true, false,
       false, false, true, false,
@@ -120,7 +125,7 @@ export const PATTERNS = {
     keys: [
       true, false, false, false,
       false, false, false, false,
-      true, false, false, false,
+      false, false, true, false,
       false, false, false, false,
     ],
   },
