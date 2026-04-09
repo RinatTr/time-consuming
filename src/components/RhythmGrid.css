@@ -89,17 +89,27 @@
   flex-basis: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: visible;
   position: relative;
   min-width: 0;
+  /* 3D raised effect with aerial view */
+  box-shadow:
+    /* Inner shadow for depth */
+    inset -2px -2px 4px rgba(0, 0, 0, 0.25),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.15),
+    /* Outer shadow for lift */
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateZ(0);
 }
 
 .block-nubs {
   display: flex;
-  gap: 2px;
-  padding: 0 1px;
-  height: 10px;
+  border-radius: 6px 6px 0px 0px;
+  gap: 3px;
+  padding: 4px 2px 2px 2px;
+  height: 12px;
   align-items: flex-end;
   justify-content: space-around;
   position: relative;
@@ -108,18 +118,25 @@
 
 .nub {
   width: 32px;
-  height: 8px;
-  border-radius: 3px 3px 0 0;
+  height: 10px;
+  border-radius: 50% 50% 3px 3px;
+  /* Individual nub 3D effect */
+  box-shadow:
+    inset -1px -1px 2px rgba(0, 0, 0, 0.2),
+    inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.2),
+    0 2px 3px rgba(0, 0, 0, 0.15);
 }
 
 .block-body {
   flex: 1;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 6px 6px;
+  /* Body shading for 3D depth */
+  box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Guest colour (orange → red) ── */
 .block--guest {
-  filter: drop-shadow(0 0 8px var(--bass-glow));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
 .nub--guest {
@@ -136,13 +153,35 @@
   /* Slight gradient per group based on position */
 }
 
+.block--guest .block-nubs {
+    background: indianred
+}
+
 /* Override per group index via JS inline var */
-.block--guest:nth-child(1) .block-body { background: linear-gradient(90deg, #f97316, #f86b1a); }
-.block--guest:nth-child(2) .block-body { background: linear-gradient(90deg, #f86119, #f55018); }
-.block--guest:nth-child(3) .block-body { background: linear-gradient(90deg, #f55018, #f24020); }
-.block--guest:nth-child(4) .block-body { background: linear-gradient(90deg, #f24020, #ef3325); }
-.block--guest:nth-child(5) .block-body { background: linear-gradient(90deg, #ef3325, #ef2222); }
-.block--guest:nth-child(6) .block-body { background: #ef4444; }
+.block--guest:nth-child(1) .block-body { 
+  background: linear-gradient(90deg, #f97316, #f86b1a);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+.block--guest:nth-child(2) .block-body { 
+  background: linear-gradient(90deg, #f86119, #f55018);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+.block--guest:nth-child(3) .block-body { 
+  background: linear-gradient(90deg, #f55018, #f24020);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+.block--guest:nth-child(4) .block-body { 
+  background: linear-gradient(90deg, #f24020, #ef3325);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+.block--guest:nth-child(5) .block-body { 
+  background: linear-gradient(90deg, #ef3325, #ef2222);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+.block--guest:nth-child(6) .block-body { 
+  background: #ef4444;
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
 
 .nub--guest:nth-child(1) { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
 .nub--guest:nth-child(2) { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
@@ -150,17 +189,46 @@
 
 /* ── Host colour (blue → violet) ── */
 .block--host {
-  filter: drop-shadow(0 0 8px var(--kb-glow));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
 .nub--host {
   background: linear-gradient(180deg, #818cf8 0%, var(--kb-start) 100%);
 }
 
-.block--host:nth-child(1) .block-body { background: #3b3fce; }
-.block--host:nth-child(2) .block-body { background: #6244be; }
-.block--host:nth-child(3) .block-body { background: #8649ae; }
-.block--host:nth-child(4) .block-body { background: #a855f7; }
+.block--host:nth-child(1) .block-body { 
+  background: #3b3fce;
+  box-shadow: inset -1px -1px 3px rgba(20, 20, 100, 0.3);
+}
+.block--host:nth-child(2) .block-body { 
+  background: #6244be;
+  box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.3);
+}
+.block--host:nth-child(3) .block-body { 
+  background: #8649ae;
+  box-shadow: inset -1px -1px 3px rgba(60, 20, 100, 0.3);
+}
+.block--host:nth-child(4) .block-body { 
+  background: #a855f7;
+  box-shadow: inset -1px -1px 3px rgba(80, 20, 150, 0.3);
+}
+
+.block--host:nth-child(1) .block-nubs {
+  background: linear-gradient(180deg, #3b3fce 0%, #2f33a8 100%);
+  /* box-shadow: inset -1px -1px 3px rgba(20, 20, 100, 0.25); */
+}
+.block--host:nth-child(2) .block-nubs {
+  background: linear-gradient(180deg, #6244be 0%, #4f36a0 100%);
+  /* box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.25); */
+}
+.block--host:nth-child(3) .block-nubs {
+  background: linear-gradient(180deg, #8649ae 0%, #6e358f 100%);
+  /* box-shadow: inset -1px -1px 3px rgba(60, 20, 100, 0.25); */
+}
+.block--host:nth-child(4) .block-nubs {
+  background: linear-gradient(180deg, #a855f7 0%, #8640d9 100%);
+  /* box-shadow: inset -1px -1px 3px rgba(80, 20, 150, 0.25); */
+}
 
 .block--host:nth-child(1) .nub--host { background: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%); }
 .block--host:nth-child(2) .nub--host { background: linear-gradient(180deg, #9880f0 0%, #6244be 100%); }
