@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useAudioSequencer } from '../hooks/useAudioSequencer'
+import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import './InstrumentPanel.css'
 
 const SnareIcon = () => (
@@ -61,7 +61,7 @@ const instruments = [
 ]
 
 export default function InstrumentPanel() {
-  const { drumMachine } = useAudioSequencer()
+  const { drumMachine } = useAudioSequencerContext()
   const [activeInstrument, setActiveInstrument] = useState(null)
 
   const handleInstrumentClick = async (instrumentId) => {

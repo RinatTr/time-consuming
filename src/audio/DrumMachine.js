@@ -28,11 +28,11 @@ class DrumMachine {
 
     this.sequence = null
     this.gridState = {
-      kick: new Array(16).fill(false),
-      snare: new Array(16).fill(false),
-      hihat: new Array(16).fill(false),
-      bass: new Array(16).fill(false),
-      keys: new Array(16).fill(false),
+      kick: new Array(64).fill(false),
+      snare: new Array(64).fill(false),
+      hihat: new Array(64).fill(false),
+      bass: new Array(64).fill(false),
+      keys: new Array(64).fill(false),
     }
   }
 
@@ -204,16 +204,17 @@ class DrumMachine {
   }
 
   /**
-   * Create and start the 16-step sequence.
+   * Create and start the sequence.
+   * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
    */
-  startSequence() {
+  startSequence(stepCount = 16) {
     if (!this.isInitialized) return
 
     if (this.sequence) {
       this.sequence.dispose()
     }
 
-    const steps = Array.from({ length: 16 }, (_, i) => i)
+    const steps = Array.from({ length: stepCount }, (_, i) => i)
 
     this.sequence = new Tone.Sequence(
       (time, step) => {
@@ -241,15 +242,16 @@ class DrumMachine {
 
   /**
    * Start playback.
+   * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
    */
-  play() {
+  play(stepCount = 16) {
     if (!this.isInitialized) {
       console.warn('DrumMachine not initialized. Call initialize() first.')
       return
     }
 
     if (!this.isPlaying) {
-      this.startSequence()
+      this.startSequence(stepCount)
       Tone.getTransport().start()
       this.isPlaying = true
       console.log('Playback started')
@@ -291,6 +293,16 @@ class DrumMachine {
    */
   onStepChange(callback) {
     this.stepCallbacks.push(callback)
+  }
+
+  /**
+   * Remove a callback for step changes.
+   */
+  offStepChange(callback) {
+    const index = this.stepCallbacks.indexOf(callback)
+    if (index > -1) {
+      this.stepCallbacks.splice(index, 1)
+    }
   }
 
   /**

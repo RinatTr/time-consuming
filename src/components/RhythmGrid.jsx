@@ -1,50 +1,88 @@
-import React, { useEffect } from 'react'
-import { useAudioSequencer } from '../hooks/useAudioSequencer'
+import React, { useMemo } from 'react'
+import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { usePlayheadTracking } from '../hooks/usePlayheadTracking'
+import { calculatePhraseGroupings, getHostGroupings } from '../audio/phraseCalculator'
 import './RhythmGrid.css'
 
-const TOTAL_STEPS = 16
+const STEPS_PER_BAR = 16
 
-/* Guest: 3/16 grouping → groups of 3 steps */
-const GUEST_GROUPS = [3, 3, 3, 3, 3, 1] // 5 full groups + 1 leftover across 16
-
-/* Host: 4/4 grouping → groups of 4 */
-const HOST_GROUPS = [4, 4, 4, 4]
-
-function buildGroups(groupSizes) {
+/**
+ * For each grouping size, create an array of nub positions (1-indexed for display).
+ * This is used to render individual nubs within each block.
+ */
+function buildGroupNubs(groupSizes) {
   const groups = []
-  let step = 1
   for (const size of groupSizes) {
-    const steps = []
-    for (let i = 0; i < size; i++) {
-      steps.push(step++)
-    }
-    groups.push(steps)
+    const nubs = Array.from({ length: size }, (_, i) => i + 1)
+    groups.push(nubs)
   }
   return groups
 }
 
-const guestGroups = buildGroups(GUEST_GROUPS)
-const hostGroups   = buildGroups(HOST_GROUPS)
+/**
+ * Calculate beat positions from grouping sizes.
+ * Each beat position is the cumulative start position of each group.
+ */
+function getGuestBeats(guestGroupings) {
+  const beats = new Set()
+  let cumulative = 0
+  for (const size of guestGroupings) {
+    beats.add(cumulative)
+    cumulative += size
+  }
+  return beats
+}
 
-/* Column beat markers — which steps are "beat 1" of a bar/group */
-const guestBeats = new Set(guestGroups.map(g => g[0]))
-const hostBeats   = new Set(hostGroups.map(g => g[0]))
+function getHostBeats() {
+  return new Set([0, 4, 8, 12]) // Host groups always [4, 4, 4, 4]
+}
 
-export default function RhythmGrid() {
-  const { currentStep } = useAudioSequencer()
+function RhythmGridComponent() {
+  const { currentStep, barCount, activeBarIndex } = useAudioSequencerContext()
   usePlayheadTracking(currentStep)
+
+  // DEBUG: Log every render with hook values
+  console.log(`%c[RhythmGrid RENDER] barCount=${barCount}, activeBarIndex=${activeBarIndex}`, 'color: blue; font-weight: bold')
+
+  // Memoize groupings calculation - only recompute when barCount or activeBarIndex change
+  const memoizedGroupings = useMemo(() => {
+    console.log(`  → useMemo triggered: recalculating for bar ${activeBarIndex}`)
+    const allBarGroupings = calculatePhraseGroupings(barCount, 3, STEPS_PER_BAR)
+    const guestGroupingsForBar = allBarGroupings[activeBarIndex] || []
+    const hostGroupingsForBar = getHostGroupings()
+
+    console.log(`  → allBarGroupings:`, allBarGroupings)
+    console.log(`  → guestGroupingsForBar[${activeBarIndex}]:`, guestGroupingsForBar)
+
+    return { allBarGroupings, guestGroupingsForBar, hostGroupingsForBar }
+  }, [barCount, activeBarIndex])
+
+  const { allBarGroupings, guestGroupingsForBar, hostGroupingsForBar } = memoizedGroupings
+
+  // Build nubs for each group (for visual representation within blocks)
+  const guestGroupNubs = useMemo(() => buildGroupNubs(guestGroupingsForBar), [guestGroupingsForBar])
+  const hostGroupNubs = useMemo(() => buildGroupNubs(hostGroupingsForBar), [hostGroupingsForBar])
+
+  // Calculate beat positions within this bar's view
+  const guestBeats = useMemo(() => getGuestBeats(guestGroupingsForBar), [guestGroupingsForBar])
+  const hostBeats = useMemo(() => getHostBeats(), [])
+
+  // Local playhead: only show playhead if in the current bar
+  const localPlayhead = currentStep % STEPS_PER_BAR
+  const playheadInThisBar = Math.floor(currentStep / STEPS_PER_BAR) === activeBarIndex
 
   return (
     <div className="rhythm-grid-wrapper">
-      <div className="rhythm-grid" data-current-step={currentStep}>
+      <div className="rhythm-grid" data-current-step={playheadInThisBar ? localPlayhead : -1} data-debug-bar={activeBarIndex} data-debug-grouping={JSON.stringify(guestGroupingsForBar)}>
 
         {/* ── Column guide lines ── */}
         <div className="column-guides" aria-hidden="true">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+          {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
             <div
               key={i}
-              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${i === currentStep ? 'playhead' : ''}`}
+              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${
+                playheadInThisBar && i === localPlayhead ? 'playhead' : ''
+              }`}
             />
           ))}
         </div>
@@ -56,42 +94,50 @@ export default function RhythmGrid() {
           {['snare', 'hihat'].map(id => (
             <div key={id} className="track-row track-row--empty">
               <div className="track-cells">
-                {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
                   <div key={i} className="cell cell--empty" />
                 ))}
               </div>
             </div>
           ))}
 
-          {/* Guest row (3/16) */}
+          {/* Guest row (3/16 per bar) */}
           <div className="track-row track-row--guest">
             <div className="track-cells">
-              {guestGroups.map((group, gi) => (
-                <div
-                  key={gi}
-                  className="block block--guest"
-                  style={{ '--span': group.length }}
-                >
-                  {gi === 0 && (
-                    <div className="meter-badge meter-badge--guest">
-                      <span>3/16</span>
+              {guestGroupingsForBar.length > 0 ? (
+                guestGroupingsForBar.map((groupSize, gi) => {
+                  const nubs = guestGroupNubs[gi] || []
+                  console.log(`  [GUEST BLOCK ${gi}] size=${groupSize}, nubs=${nubs.length}`)
+                  return (
+                    <div
+                      key={gi}
+                      className="block block--guest"
+                      style={{ '--span': groupSize }}
+                    >
+                      {gi === 0 && (
+                        <div className="meter-badge meter-badge--guest">
+                          <span>3/16</span>
+                        </div>
+                      )}
+                      <div className="block-nubs">
+                        {nubs.map((step, si) => (
+                          <div key={si} className="nub nub--guest" />
+                        ))}
+                      </div>
+                      <div className="block-body" />
                     </div>
-                  )}
-                  <div className="block-nubs">
-                    {group.map((step, si) => (
-                      <div key={si} className="nub nub--guest" />
-                    ))}
-                  </div>
-                  <div className="block-body" />
-                </div>
-              ))}
+                  )
+                })
+              ) : (
+                <div className="cell cell--empty" />
+              )}
             </div>
           </div>
 
           {/* Kick row — empty */}
           <div className="track-row track-row--empty">
             <div className="track-cells">
-              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+              {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
                 <div key={i} className="cell cell--empty" />
               ))}
             </div>
@@ -100,25 +146,28 @@ export default function RhythmGrid() {
           {/* Host row (4/4) */}
           <div className="track-row track-row--host">
             <div className="track-cells">
-              {hostGroups.map((group, gi) => (
-                <div
-                  key={gi}
-                  className="block block--host"
-                  style={{ '--span': group.length }}
-                >
-                  {gi === 0 && (
-                    <div className="meter-badge meter-badge--host">
-                      <span>4/4</span>
+              {hostGroupingsForBar.map((groupSize, gi) => {
+                const nubs = hostGroupNubs[gi] || []
+                return (
+                  <div
+                    key={gi}
+                    className="block block--host"
+                    style={{ '--span': groupSize }}
+                  >
+                    {gi === 0 && (
+                      <div className="meter-badge meter-badge--host">
+                        <span>4/4</span>
+                      </div>
+                    )}
+                    <div className="block-nubs">
+                      {nubs.map((step, si) => (
+                        <div key={si} className="nub nub--host" />
+                      ))}
                     </div>
-                  )}
-                  <div className="block-nubs">
-                    {group.map((step, si) => (
-                      <div key={si} className="nub nub--host" />
-                    ))}
+                    <div className="block-body" />
                   </div>
-                  <div className="block-body" />
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -126,7 +175,7 @@ export default function RhythmGrid() {
 
         {/* ── Step number ruler ── */}
         <div className="step-ruler">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+          {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
             <div key={i} className={`step-num ${i === 0 ? 'step-num--active' : ''}`}>
               {i + 1}
             </div>
@@ -137,3 +186,5 @@ export default function RhythmGrid() {
     </div>
   )
 }
+
+export default RhythmGridComponent

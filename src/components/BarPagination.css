@@ -1,0 +1,41 @@
+/* BarPagination.css */
+
+.bar-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #1a1a1a;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+.bar-nav-btn {
+  padding: 0.5rem 1rem;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.bar-nav-btn:hover:not(:disabled) {
+  background: #444;
+  border-color: #777;
+}
+
+.bar-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bar-counter {
+  color: #aaa;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 3rem;
+  text-align: center;
+}

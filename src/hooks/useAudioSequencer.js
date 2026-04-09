@@ -1,21 +1,25 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import DrumMachine from '../audio/DrumMachine'
 import { loadPattern, PATTERNS } from '../audio/patterns'
 
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
- * Handles initialization, playback control, BPM updates, and playhead tracking
+ * Handles initialization, playback control, BPM updates, playhead tracking, and multi-bar sequencing
  */
 export function useAudioSequencer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [bpm, setBpm] = useState(120)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [barCount, setBarCount] = useState(1)
+  const [activeBarIndex, setActiveBarIndex] = useState(0)
   const initializingRef = useRef(false)
 
-  /**
-   * Initialize audio context (must be called from a user gesture)
-   */
+  // DEBUG: Log all state updates
+  useEffect(() => {
+    console.log(`[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, isPlaying=${isPlaying}`)
+  }, [barCount, activeBarIndex, isPlaying])
+
   const initializeAudio = async () => {
     if (initializingRef.current || isInitialized) return
 
@@ -24,14 +28,56 @@ export function useAudioSequencer() {
       await DrumMachine.initialize()
       setIsInitialized(true)
       setBpm(DrumMachine.getBPM())
-      //this sets the pattern for one instrument. to set all instruments at once for the pattern, 
+      // Load polyrhythmic pattern
       loadPattern('polyrhythmic', DrumMachine)
-
     } catch (error) {
       console.error('Failed to initialize audio:', error)
       initializingRef.current = false
     }
   }
+
+  /**
+   * Initialize multi-bar mode: tile the 16-step pattern across N bars
+   */
+  const initializeBarCount = useCallback((n) => {
+    console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
+    if (n < 1 || n > 4 || isPlaying) {
+      console.log(`[initializeBarCount] BLOCKED: n in range=${n >= 1 && n <= 4}, isPlaying=${isPlaying}`)
+      return
+    }
+
+    // Tile each instrument's 16-step pattern across N bars
+    Object.keys(DrumMachine.gridState).forEach((instrumentName) => {
+      const basePattern = DrumMachine.gridState[instrumentName].slice(0, 16)
+      const fullPattern = new Array(64).fill(false)
+
+      for (let bar = 0; bar < n; bar++) {
+        const barOffset = bar * 16
+        for (let step = 0; step < 16; step++) {
+          fullPattern[barOffset + step] = basePattern[step]
+        }
+      }
+
+      DrumMachine.gridState[instrumentName] = fullPattern
+    })
+
+    console.log(`[initializeBarCount] Setting barCount=${n}, activeBarIndex=0`)
+    setBarCount(n)
+    setActiveBarIndex(0)
+  }, [isPlaying])
+
+  /**
+   * Navigate to a specific bar (only when stopped)
+   */
+  const goToBar = useCallback((barIndex) => {
+    console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
+    if (isPlaying || barIndex < 0 || barIndex >= barCount) {
+      console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+      return
+    }
+    console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
+    setActiveBarIndex(barIndex)
+  }, [isPlaying, barCount])
 
   /**
    * Start playback
@@ -40,7 +86,8 @@ export function useAudioSequencer() {
     if (!isInitialized) {
       await initializeAudio()
     }
-    DrumMachine.play()
+    const stepCount = barCount * 16
+    DrumMachine.play(stepCount)
     setIsPlaying(true)
   }
 
@@ -51,6 +98,7 @@ export function useAudioSequencer() {
     DrumMachine.stop()
     setIsPlaying(false)
     setCurrentStep(0)
+    setActiveBarIndex(0)
   }
 
   /**
@@ -89,19 +137,26 @@ export function useAudioSequencer() {
     return DrumMachine.getGridPattern(instrumentName)
   }
 
-  // Subscribe to step changes for playhead tracking
-  useEffect(() => {
-    const handleStepChange = (step) => {
-      setCurrentStep(step)
-    }
+  // Memoize step change handler to prevent re-creating it on every render
+  const handleStepChange = useCallback((globalStep) => {
+    setCurrentStep(globalStep)
 
+    // Auto-follow: update activeBarIndex during playback
+    if (isPlaying) {
+      const newBarIndex = Math.floor(globalStep / 16)
+      setActiveBarIndex(newBarIndex)
+    }
+  }, [isPlaying])
+
+  // Subscribe to step changes for playhead tracking and auto-follow during playback
+  useEffect(() => {
     DrumMachine.onStepChange(handleStepChange)
 
-    // Cleanup on unmount
     return () => {
-      // Note: In a real app, you might want to track and remove listeners
+      // Clean up listener to prevent accumulation
+      DrumMachine.offStepChange(handleStepChange)
     }
-  }, [])
+  }, [handleStepChange])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -117,11 +172,17 @@ export function useAudioSequencer() {
     currentStep,
     bpm,
     isInitialized,
+    barCount,
+    activeBarIndex,
 
     // Control methods
     play,
     stop,
     updateBPM,
+
+    // Multi-bar methods
+    initializeBarCount,
+    goToBar,
 
     // Grid methods
     setGridCell,
