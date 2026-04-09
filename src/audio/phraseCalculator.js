@@ -100,3 +100,29 @@ export function getGuestBeats(guestGroupings) {
 export function getHostBeats() {
   return new Set([0, 4, 8, 12])  // for 16 steps, 4-step groups
 }
+
+/**
+ * generatePolyrhythmicPattern
+ * Generates a polyrhythmic beat pattern that repeats across multiple bars.
+ * Places a beat every `beatInterval` steps in a continuous stream across all bars.
+ * 
+ * @param {number} barCount - number of bars
+ * @param {number} beatInterval - steps between beats (default: 3 for "true, false, false" pattern)
+ * @param {number} stepsPerBar - steps per bar (default: 16)
+ * @returns {boolean[]} - flattened pattern array of length barCount * stepsPerBar
+ * 
+ * Example with beatInterval=3, barCount=2:
+ *   Continuous beat positions: 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30
+ *   Returns: [true, false, false, true, false, false, ..., true, false, false, ...]
+ */
+export function generatePolyrhythmicPattern(barCount, beatInterval = 3, stepsPerBar = 16) {
+  const totalSteps = barCount * stepsPerBar
+  const pattern = new Array(totalSteps).fill(false)
+  
+  // Place beats every beatInterval steps across the continuous stream
+  for (let step = 0; step < totalSteps; step += beatInterval) {
+    pattern[step] = true
+  }
+  
+  return pattern
+}

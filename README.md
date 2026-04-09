@@ -39,6 +39,7 @@ UI remains 60fps
 Memory linear with bar count
 React re-renders optimized
 
+in the future, you would be able to toggle each instrument's chosen+currently playing pattern. for each pattern name in PATTERNS (fourOnFloor, technoHouse etc) each instrument will have it's own pattern for "host" beat, and for "guest" beat which you could toggle between. only the instruments that are toggled into being a "guest" beat state
 
 
 CLARIFICATIONS POST PLANNING STAGE

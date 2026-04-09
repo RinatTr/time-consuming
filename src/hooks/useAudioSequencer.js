@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import DrumMachine from '../audio/DrumMachine'
 import { loadPattern, PATTERNS } from '../audio/patterns'
+import { generatePolyrhythmicPattern } from '../audio/phraseCalculator'
 
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
@@ -38,6 +39,8 @@ export function useAudioSequencer() {
 
   /**
    * Initialize multi-bar mode: tile the 16-step pattern across N bars
+   * For guest instruments (e.g., snare), apply polyrhythmic pattern
+   * For host instruments, tile the base pattern
    */
   const initializeBarCount = useCallback((n) => {
     console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
@@ -46,19 +49,36 @@ export function useAudioSequencer() {
       return
     }
 
-    // Tile each instrument's 16-step pattern across N bars
-    Object.keys(DrumMachine.gridState).forEach((instrumentName) => {
-      const basePattern = DrumMachine.gridState[instrumentName].slice(0, 16)
-      const fullPattern = new Array(64).fill(false)
+    // Guest instruments (snare) get polyrhythmic pattern
+    const guestInstruments = ['snare']
+    
+    // Host instruments keep their base pattern tiled
+    const hostInstruments = ['hihat', 'bass', 'kick', 'keys']
 
-      for (let bar = 0; bar < n; bar++) {
-        const barOffset = bar * 16
-        for (let step = 0; step < 16; step++) {
-          fullPattern[barOffset + step] = basePattern[step]
-        }
+    // Apply polyrhythmic pattern to guest instruments
+    guestInstruments.forEach((instrumentName) => {
+      if (DrumMachine.gridState[instrumentName]) {
+        const polyPattern = generatePolyrhythmicPattern(n, 3, 16)
+        DrumMachine.gridState[instrumentName] = polyPattern
+        console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
       }
+    })
 
-      DrumMachine.gridState[instrumentName] = fullPattern
+    // Tile each host instrument's 16-step pattern across N bars
+    hostInstruments.forEach((instrumentName) => {
+      if (DrumMachine.gridState[instrumentName]) {
+        const basePattern = DrumMachine.gridState[instrumentName].slice(0, 16)
+        const fullPattern = new Array(n * 16).fill(false)
+
+        for (let bar = 0; bar < n; bar++) {
+          const barOffset = bar * 16
+          for (let step = 0; step < 16; step++) {
+            fullPattern[barOffset + step] = basePattern[step]
+          }
+        }
+
+        DrumMachine.gridState[instrumentName] = fullPattern
+      }
     })
 
     console.log(`[initializeBarCount] Setting barCount=${n}, activeBarIndex=0`)
