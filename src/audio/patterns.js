@@ -107,7 +107,7 @@ export const PATTERNS = {
       true, false, false,
       true, false, false,
       true, false, false,
-      true, // 6 groups of 3 = 16 steps + 1
+      true,
     ],
     bass: [
       true, false, false, false,

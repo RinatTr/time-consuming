@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { usePlayheadTracking } from '../hooks/usePlayheadTracking'
-import { calculatePhraseGroupings, getHostGroupings } from '../audio/phraseCalculator'
+import { calculatePhraseGroupings, getHostGroupings, getGuestBlockBoundaries, getHostBlockBoundaries } from '../audio/phraseCalculator'
 import './RhythmGrid.css'
 
 const STEPS_PER_BAR = 16
@@ -19,27 +19,14 @@ function buildGroupNubs(groupSizes) {
   return groups
 }
 
-/**
- * Calculate beat positions from grouping sizes.
- * Each beat position is the cumulative start position of each group.
- */
-function getGuestBeats(guestGroupings) {
-  const beats = new Set()
-  let cumulative = 0
-  for (const size of guestGroupings) {
-    beats.add(cumulative)
-    cumulative += size
-  }
-  return beats
-}
-
-function getHostBeats() {
-  return new Set([0, 4, 8, 12]) // Host groups always [4, 4, 4, 4]
-}
-
 function RhythmGridComponent() {
   const { currentStep, barCount, activeBarIndex } = useAudioSequencerContext()
-  usePlayheadTracking(currentStep)
+
+  // Local playhead: only show playhead if in the current bar
+  const localPlayhead = currentStep % STEPS_PER_BAR
+  const playheadInThisBar = Math.floor(currentStep / STEPS_PER_BAR) === activeBarIndex
+
+  usePlayheadTracking(localPlayhead, playheadInThisBar)
 
   // Memoize groupings calculation - only recompute when barCount or activeBarIndex change
   const memoizedGroupings = useMemo(() => {
@@ -65,12 +52,8 @@ function RhythmGridComponent() {
   const hostGroupNubs = useMemo(() => buildGroupNubs(hostGroupingsForBar), [hostGroupingsForBar])
 
   // Calculate beat positions within this bar's view
-  const guestBeats = useMemo(() => getGuestBeats(guestGroupingsForBar), [guestGroupingsForBar])
-  const hostBeats = useMemo(() => getHostBeats(), [])
-
-  // Local playhead: only show playhead if in the current bar
-  const localPlayhead = currentStep % STEPS_PER_BAR
-  const playheadInThisBar = Math.floor(currentStep / STEPS_PER_BAR) === activeBarIndex
+  const guestBeats = useMemo(() => getGuestBlockBoundaries(guestGroupingsForBar), [guestGroupingsForBar])
+  const hostBeats = useMemo(() => getHostBlockBoundaries(), [])
 
   return (
     <div className="rhythm-grid-wrapper">
@@ -81,7 +64,7 @@ function RhythmGridComponent() {
           {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
             <div
               key={i}
-              className={`col-guide ${guestBeats.has(i + 1) ? 'beat-guest' : ''} ${hostBeats.has(i + 1) ? 'beat-host' : ''} ${
+              className={`col-guide ${guestBeats.has(i) ? 'beat-guest' : ''} ${hostBeats.has(i) ? 'beat-host' : ''} ${
                 playheadInThisBar && i === localPlayhead ? 'playhead' : ''
               }`}
             />

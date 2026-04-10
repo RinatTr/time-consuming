@@ -29,10 +29,12 @@ export function useAudioSequencer() {
     initializingRef.current = true
     try {
       await DrumMachine.initialize()
-      setIsInitialized(true)
       setBpm(DrumMachine.getBPM())
       // Load polyrhythmic pattern
       loadPattern('polyrhythmic', DrumMachine)
+      // FIX #2: Set initialized flag AFTER pattern is loaded into gridState
+      // This closes the race window where initializeBarCount might read empty gridState
+      setIsInitialized(true)
     } catch (error) {
       console.error('Failed to initialize audio:', error)
       initializingRef.current = false
@@ -43,8 +45,14 @@ export function useAudioSequencer() {
    * Initialize multi-bar mode: tile the 16-step pattern across N bars
    * For guest instruments (e.g., snare), apply polyrhythmic pattern
    * For host instruments, tile the base pattern
+   * 
+   * FIX #1: If audio hasn't been initialized yet, initialize now (bar selector click is a valid gesture)
+   * This ensures gridState is populated with the real polyrhythmic pattern before expansion.
+   * 
+   * WARNING: This assumes polyrhythmic pattern is loaded as the base. If user edits
+   * are made before calling this (planned feature), those edits will be lost on resize.
    */
-  const initializeBarCount = useCallback((n) => {
+  const initializeBarCount = useCallback(async (n) => {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
     }
@@ -55,38 +63,42 @@ export function useAudioSequencer() {
       return
     }
 
+    // If audio context hasn't been initialized, do it now to ensure gridState is populated
+    if (!isInitialized) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[initializeBarCount] Audio not yet initialized; initializing now...`)
+      }
+      await initializeAudio()
+    }
+
     // Guest instruments (snare) get polyrhythmic pattern
     const guestInstruments = ['snare']
     
     // Host instruments keep their base pattern tiled
     const hostInstruments = ['hihat', 'bass', 'kick', 'keys']
 
-    // Apply polyrhythmic pattern to guest instruments
+    // Apply polyrhythmic pattern to guest instruments via public API
     guestInstruments.forEach((instrumentName) => {
-      if (DrumMachine.gridState[instrumentName]) {
-        const polyPattern = generatePolyrhythmicPattern(n, 3, 16)
-        DrumMachine.gridState[instrumentName] = polyPattern
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
-        }
+      const polyPattern = generatePolyrhythmicPattern(n, 3, 16)
+      DrumMachine.setGridPattern(instrumentName, polyPattern)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
       }
     })
 
-    // Tile each host instrument's 16-step pattern across N bars
+    // Tile each host instrument's 16-step pattern across N bars via public API
     hostInstruments.forEach((instrumentName) => {
-      if (DrumMachine.gridState[instrumentName]) {
-        const basePattern = DrumMachine.gridState[instrumentName].slice(0, 16)
-        const fullPattern = new Array(n * 16).fill(false)
+      const basePattern = DrumMachine.getGridPattern(instrumentName).slice(0, 16)
+      const fullPattern = new Array(n * 16).fill(false)
 
-        for (let bar = 0; bar < n; bar++) {
-          const barOffset = bar * 16
-          for (let step = 0; step < 16; step++) {
-            fullPattern[barOffset + step] = basePattern[step]
-          }
+      for (let bar = 0; bar < n; bar++) {
+        const barOffset = bar * 16
+        for (let step = 0; step < 16; step++) {
+          fullPattern[barOffset + step] = basePattern[step]
         }
-
-        DrumMachine.gridState[instrumentName] = fullPattern
       }
+
+      DrumMachine.setGridPattern(instrumentName, fullPattern)
     })
 
     if (process.env.NODE_ENV === 'development') {
@@ -94,7 +106,7 @@ export function useAudioSequencer() {
     }
     setBarCount(n)
     setActiveBarIndex(0)
-  }, [isPlaying])
+  }, [isPlaying, isInitialized])
 
   /**
    * Navigate to a specific bar (only when stopped)
@@ -174,15 +186,17 @@ export function useAudioSequencer() {
   }
 
   // Memoize step change handler to prevent re-creating it on every render
+  // Note: we derive bar index from step directly without the isPlaying guard,
+  // since the step value itself indicates whether we're playing (if step > 0 and advancing)
   const handleStepChange = useCallback((globalStep) => {
     setCurrentStep(globalStep)
 
     // Auto-follow: update activeBarIndex during playback
-    if (isPlaying) {
-      const newBarIndex = Math.floor(globalStep / 16)
-      setActiveBarIndex(newBarIndex)
-    }
-  }, [isPlaying])
+    // (derive bar index directly from step; if playback has stopped, the next step change
+    // will signal stop with step=0 or will reset the state externally)
+    const newBarIndex = Math.floor(globalStep / 16)
+    setActiveBarIndex(newBarIndex)
+  }, [])
 
   // Subscribe to step changes for playhead tracking and auto-follow during playback
   useEffect(() => {

@@ -109,6 +109,12 @@ class DrumMachine {
     }).toDestination()
 
     // --- Hi-Hat --- 
+    // HPF stored on this.nodes so it gets properly disposed
+    this.nodes.hihatHPF = new Tone.Filter({
+      frequency: 8000,
+      type: 'highpass',
+    }).toDestination()
+
     this.synths.hihat = new Tone.NoiseSynth({
         noise: { type: 'white' },
         envelope: {
@@ -117,9 +123,7 @@ class DrumMachine {
             sustain: 0,
         },
         volume: -8,
-        }).connect(
-        new Tone.Filter({ frequency: 8000, type: 'highpass' }).toDestination()
-        )
+        }).connect(this.nodes.hihatHPF)
 
     // --- Bass ---
     this.synths.bass = new Tone.PolySynth(Tone.Synth, {

@@ -1,26 +1,32 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
- * usePlayheadTracking - Custom hook for updating the visual playhead position
- * Smoothly tracks the current step being played
+ * usePlayheadTracking - Custom hook for smooth scrolling the current step into view
+ * Only scrolls when the playhead is visible in the current bar.
+ *
+ * @param {number} localPlayhead - The playhead position within the current bar (0-15)
+ * @param {boolean} playheadInThisBar - True if the global playhead is in the active bar
  */
-export function usePlayheadTracking(currentStep) {
+export function usePlayheadTracking(localPlayhead, playheadInThisBar) {
+  const columnGuidesRef = useRef(null)
+
   useEffect(() => {
-    // Find the playhead element
-    const playheadElement = document.querySelector('.col-guide.playhead')
-
-    if (playheadElement) {
-      // Calculate the position of this step in the grid
-      const columnGuides = document.querySelectorAll('.col-guide')
-      if (columnGuides[currentStep]) {
-        const targetElement = columnGuides[currentStep]
-
-        // Smooth scroll into view if needed
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
-
-        // Update playhead styling if you want to highlight it differently
-        // You could add a data-attribute or class here
-      }
+    // Cache the column guides on first mount
+    if (!columnGuidesRef.current) {
+      columnGuidesRef.current = document.querySelectorAll('.col-guide')
     }
-  }, [currentStep])
+  }, [])
+
+  useEffect(() => {
+    // Only scroll if the playhead is visible in this bar and the index is valid
+    if (!playheadInThisBar || localPlayhead < 0 || !columnGuidesRef.current) {
+      return
+    }
+
+    const targetElement = columnGuidesRef.current[localPlayhead]
+    if (targetElement) {
+      // Smooth scroll into view if needed
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [localPlayhead, playheadInThisBar])
 }

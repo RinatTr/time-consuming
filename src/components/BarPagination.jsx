@@ -4,7 +4,8 @@ import './BarPagination.css'
 /**
  * BarPagination
  * Prev/Next navigation for multi-bar sequencer
- * Disabled when playing or at boundary
+ * Disabled when playing because the playhead automatically advances activeBarIndex
+ * via the auto-follow logic in handleStepChange (useAudioSequencer.js).
  */
 export function BarPagination({ barCount, activeBarIndex, onPrev, onNext, isPlaying }) {
   const canPrev = activeBarIndex > 0 && !isPlaying

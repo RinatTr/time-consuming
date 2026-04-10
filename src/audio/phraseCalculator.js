@@ -86,9 +86,10 @@ export function getHostGroupings() {
 }
 
 /**
- * Convenience: derive beat-1 (downbeat) positions from groupings
+ * Convenience: derive block start positions from groupings
+ * (These mark group boundaries within a bar, not musical downbeats)
  */
-export function getGuestBeats(guestGroupings) {
+export function getGuestBlockBoundaries(guestGroupings) {
   return new Set(
     guestGroupings.reduce((acc, size, i) => {
       acc.push(i === 0 ? 0 : acc[acc.length - 1] + guestGroupings[i - 1])
@@ -97,7 +98,7 @@ export function getGuestBeats(guestGroupings) {
   )
 }
 
-export function getHostBeats() {
+export function getHostBlockBoundaries() {
   return new Set([0, 4, 8, 12])  // for 16 steps, 4-step groups
 }
 

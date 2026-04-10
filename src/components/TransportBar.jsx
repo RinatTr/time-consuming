@@ -71,7 +71,11 @@ export default function TransportBar() {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[TransportBar] handleSelectBarCount called with n=${n}`)
     }
-    initializeBarCount(n)
+    // initializeBarCount is now async (may initialize audio context if needed)
+    // Fire and forget — no need to await in the UI callback
+    initializeBarCount(n).catch((error) => {
+      console.error('Error initializing bar count:', error)
+    })
   }, [initializeBarCount])
 
   const handlePrevBar = useCallback(() => {
