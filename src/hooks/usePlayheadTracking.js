@@ -1,12 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
 /**
  * usePlayheadTracking - Custom hook for updating the visual playhead position
  * Smoothly tracks the current step being played
  */
 export function usePlayheadTracking(currentStep) {
-  const playheadRef = useRef(null)
-
   useEffect(() => {
     // Find the playhead element
     const playheadElement = document.querySelector('.col-guide.playhead')
@@ -25,6 +23,4 @@ export function usePlayheadTracking(currentStep) {
       }
     }
   }, [currentStep])
-
-  return playheadRef
 }

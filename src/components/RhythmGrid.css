@@ -139,101 +139,74 @@
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
+.block--guest .block-nubs {
+  background: indianred;
+}
+
+/* Guest block colors via CSS custom properties */
+.block--guest:nth-child(1) { --guest-color: linear-gradient(90deg, #f97316, #f86b1a); }
+.block--guest:nth-child(2) { --guest-color: linear-gradient(90deg, #f86119, #f55018); }
+.block--guest:nth-child(3) { --guest-color: linear-gradient(90deg, #f55018, #f24020); }
+.block--guest:nth-child(4) { --guest-color: linear-gradient(90deg, #f24020, #ef3325); }
+.block--guest:nth-child(5) { --guest-color: linear-gradient(90deg, #ef3325, #ef2222); }
+.block--guest:nth-child(6) { --guest-color: #ef4444; }
+
+.block--guest .block-body {
+  background: var(--guest-color);
+  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+}
+
 .nub--guest {
   background: linear-gradient(180deg, #fbbf5a 0%, var(--bass-start) 100%);
 }
 
-.block--guest .block-body {
-  background: linear-gradient(
-    90deg,
-    var(--bass-start) 0%,
-    color-mix(in srgb, var(--bass-start) 60%, var(--bass-end)) 50%,
-    var(--bass-end) 100%
-  );
-  /* Slight gradient per group based on position */
-}
-
-.block--guest .block-nubs {
-    background: indianred
-}
-
-/* Override per group index via JS inline var */
-.block--guest:nth-child(1) .block-body { 
-  background: linear-gradient(90deg, #f97316, #f86b1a);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-.block--guest:nth-child(2) .block-body { 
-  background: linear-gradient(90deg, #f86119, #f55018);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-.block--guest:nth-child(3) .block-body { 
-  background: linear-gradient(90deg, #f55018, #f24020);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-.block--guest:nth-child(4) .block-body { 
-  background: linear-gradient(90deg, #f24020, #ef3325);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-.block--guest:nth-child(5) .block-body { 
-  background: linear-gradient(90deg, #ef3325, #ef2222);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-.block--guest:nth-child(6) .block-body { 
-  background: #ef4444;
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
-}
-
-.nub--guest:nth-child(1) { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
-.nub--guest:nth-child(2) { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
-.nub--guest:nth-child(3) { background: linear-gradient(180deg, #f8a060 0%, #f84000 100%); }
+.block--guest:nth-child(1) .nub--guest { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
+.block--guest:nth-child(2) .nub--guest { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
+.block--guest:nth-child(3) .nub--guest { background: linear-gradient(180deg, #f8a060 0%, #f84000 100%); }
 
 /* ── Host colour (blue → violet) ── */
 .block--host {
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }
 
+/* Host block colors via CSS custom properties */
+.block--host:nth-child(1) { 
+  --host-color: #3b3fce;
+  --host-nub-bg: linear-gradient(180deg, #3b3fce 0%, #2f33a8 100%);
+  --host-nub-color: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%);
+}
+.block--host:nth-child(2) { 
+  --host-color: #6244be;
+  --host-nub-bg: linear-gradient(180deg, #6244be 0%, #4f36a0 100%);
+  --host-nub-color: linear-gradient(180deg, #9880f0 0%, #6244be 100%);
+}
+.block--host:nth-child(3) { 
+  --host-color: #8649ae;
+  --host-nub-bg: linear-gradient(180deg, #8649ae 0%, #6e358f 100%);
+  --host-nub-color: linear-gradient(180deg, #b070e8 0%, #8649ae 100%);
+}
+.block--host:nth-child(4) { 
+  --host-color: #a855f7;
+  --host-nub-bg: linear-gradient(180deg, #a855f7 0%, #8640d9 100%);
+  --host-nub-color: linear-gradient(180deg, #d070f8 0%, #a855f7 100%);
+}
+
+.block--host .block-body { 
+  background: var(--host-color);
+  box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.3);
+}
+
+.block--host .block-nubs {
+  background: var(--host-nub-bg);
+}
+
 .nub--host {
   background: linear-gradient(180deg, #818cf8 0%, var(--kb-start) 100%);
 }
 
-.block--host:nth-child(1) .block-body { 
-  background: #3b3fce;
-  box-shadow: inset -1px -1px 3px rgba(20, 20, 100, 0.3);
+.block--host .nub--host { 
+  background: var(--host-nub-color);
 }
-.block--host:nth-child(2) .block-body { 
-  background: #6244be;
-  box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.3);
-}
-.block--host:nth-child(3) .block-body { 
-  background: #8649ae;
-  box-shadow: inset -1px -1px 3px rgba(60, 20, 100, 0.3);
-}
-.block--host:nth-child(4) .block-body { 
-  background: #a855f7;
-  box-shadow: inset -1px -1px 3px rgba(80, 20, 150, 0.3);
-}
-
-.block--host:nth-child(1) .block-nubs {
-  background: linear-gradient(180deg, #3b3fce 0%, #2f33a8 100%);
-  /* box-shadow: inset -1px -1px 3px rgba(20, 20, 100, 0.25); */
-}
-.block--host:nth-child(2) .block-nubs {
-  background: linear-gradient(180deg, #6244be 0%, #4f36a0 100%);
-  /* box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.25); */
-}
-.block--host:nth-child(3) .block-nubs {
-  background: linear-gradient(180deg, #8649ae 0%, #6e358f 100%);
-  /* box-shadow: inset -1px -1px 3px rgba(60, 20, 100, 0.25); */
-}
-.block--host:nth-child(4) .block-nubs {
-  background: linear-gradient(180deg, #a855f7 0%, #8640d9 100%);
-  /* box-shadow: inset -1px -1px 3px rgba(80, 20, 150, 0.25); */
-}
-
-.block--host:nth-child(1) .nub--host { background: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%); }
-.block--host:nth-child(2) .nub--host { background: linear-gradient(180deg, #9880f0 0%, #6244be 100%); }
-.block--host:nth-child(3) .nub--host { background: linear-gradient(180deg, #b070e8 0%, #8649ae 100%); }
-.block--host:nth-child(4) .nub--host { background: linear-gradient(180deg, #d070f8 0%, #a855f7 100%); }
 
 /* ── Meter badges ── */
 .meter-badge {

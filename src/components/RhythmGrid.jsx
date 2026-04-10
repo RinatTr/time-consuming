@@ -41,18 +41,19 @@ function RhythmGridComponent() {
   const { currentStep, barCount, activeBarIndex } = useAudioSequencerContext()
   usePlayheadTracking(currentStep)
 
-  // DEBUG: Log every render with hook values
-  console.log(`%c[RhythmGrid RENDER] barCount=${barCount}, activeBarIndex=${activeBarIndex}`, 'color: blue; font-weight: bold')
-
   // Memoize groupings calculation - only recompute when barCount or activeBarIndex change
   const memoizedGroupings = useMemo(() => {
-    console.log(`  → useMemo triggered: recalculating for bar ${activeBarIndex}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`  → useMemo triggered: recalculating for bar ${activeBarIndex}`)
+    }
     const allBarGroupings = calculatePhraseGroupings(barCount, 3, STEPS_PER_BAR)
     const guestGroupingsForBar = allBarGroupings[activeBarIndex] || []
     const hostGroupingsForBar = getHostGroupings()
 
-    console.log(`  → allBarGroupings:`, allBarGroupings)
-    console.log(`  → guestGroupingsForBar[${activeBarIndex}]:`, guestGroupingsForBar)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`  → allBarGroupings:`, allBarGroupings)
+      console.log(`  → guestGroupingsForBar[${activeBarIndex}]:`, guestGroupingsForBar)
+    }
 
     return { allBarGroupings, guestGroupingsForBar, hostGroupingsForBar }
   }, [barCount, activeBarIndex])
@@ -73,7 +74,7 @@ function RhythmGridComponent() {
 
   return (
     <div className="rhythm-grid-wrapper">
-      <div className="rhythm-grid" data-current-step={playheadInThisBar ? localPlayhead : -1} data-debug-bar={activeBarIndex} data-debug-grouping={JSON.stringify(guestGroupingsForBar)}>
+      <div className="rhythm-grid" data-current-step={playheadInThisBar ? localPlayhead : -1}>
 
         {/* ── Column guide lines ── */}
         <div className="column-guides" aria-hidden="true">
@@ -107,7 +108,9 @@ function RhythmGridComponent() {
               {guestGroupingsForBar.length > 0 ? (
                 guestGroupingsForBar.map((groupSize, gi) => {
                   const nubs = guestGroupNubs[gi] || []
-                  console.log(`  [GUEST BLOCK ${gi}] size=${groupSize}, nubs=${nubs.length}`)
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log(`  [GUEST BLOCK ${gi}] size=${groupSize}, nubs=${nubs.length}`)
+                  }
                   return (
                     <div
                       key={gi}

@@ -3,53 +3,58 @@
 .bar-count-selector {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
-  background: #1a1a1a;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
 }
 
 .bar-count-label {
-  color: #aaa;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
 }
 
 .bar-count-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .bar-count-btn {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  background: #333;
-  color: #aaa;
-  border: 1px solid #555;
-  border-radius: 0.25rem;
+  background: var(--bg-cell);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 14px;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .bar-count-btn:hover:not(:disabled) {
-  background: #444;
-  border-color: #777;
-  color: #fff;
+  background: var(--bg-cell-hover);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .bar-count-btn.active {
-  background: #0066cc;
-  border-color: #0066cc;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-surface);
+  font-weight: 700;
 }
 
 .bar-count-btn.active:hover:not(:disabled) {
-  background: #0052a3;
-  border-color: #0052a3;
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(0.9);
 }
 
 .bar-count-btn:disabled {

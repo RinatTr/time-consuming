@@ -18,7 +18,9 @@ export function useAudioSequencer() {
 
   // DEBUG: Log all state updates
   useEffect(() => {
-    console.log(`[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, isPlaying=${isPlaying}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, isPlaying=${isPlaying}`)
+    }
   }, [barCount, activeBarIndex, isPlaying])
 
   const initializeAudio = async () => {
@@ -43,9 +45,13 @@ export function useAudioSequencer() {
    * For host instruments, tile the base pattern
    */
   const initializeBarCount = useCallback((n) => {
-    console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
+    }
     if (n < 1 || n > 4 || isPlaying) {
-      console.log(`[initializeBarCount] BLOCKED: n in range=${n >= 1 && n <= 4}, isPlaying=${isPlaying}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[initializeBarCount] BLOCKED: n in range=${n >= 1 && n <= 4}, isPlaying=${isPlaying}`)
+      }
       return
     }
 
@@ -60,7 +66,9 @@ export function useAudioSequencer() {
       if (DrumMachine.gridState[instrumentName]) {
         const polyPattern = generatePolyrhythmicPattern(n, 3, 16)
         DrumMachine.gridState[instrumentName] = polyPattern
-        console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
+        }
       }
     })
 
@@ -81,7 +89,9 @@ export function useAudioSequencer() {
       }
     })
 
-    console.log(`[initializeBarCount] Setting barCount=${n}, activeBarIndex=0`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[initializeBarCount] Setting barCount=${n}, activeBarIndex=0`)
+    }
     setBarCount(n)
     setActiveBarIndex(0)
   }, [isPlaying])
@@ -90,12 +100,18 @@ export function useAudioSequencer() {
    * Navigate to a specific bar (only when stopped)
    */
   const goToBar = useCallback((barIndex) => {
-    console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
+    }
     if (isPlaying || barIndex < 0 || barIndex >= barCount) {
-      console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+      }
       return
     }
-    console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
+    }
     setActiveBarIndex(barIndex)
   }, [isPlaying, barCount])
 

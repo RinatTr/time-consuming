@@ -50,7 +50,9 @@ class DrumMachine {
       Tone.getTransport().timeSignature = [4, 4]
       this.createSynths()
       this.isInitialized = true
-      console.log('DrumMachine initialized')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('DrumMachine initialized')
+      }
     } catch (error) {
       console.error('Failed to initialize DrumMachine:', error)
       throw error
@@ -254,7 +256,9 @@ class DrumMachine {
       this.startSequence(stepCount)
       Tone.getTransport().start()
       this.isPlaying = true
-      console.log('Playback started')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Playback started')
+      }
     }
   }
 
@@ -268,7 +272,9 @@ class DrumMachine {
       this.currentStep = 0
       this.notifyStepChange(0)
       this.isPlaying = false
-      console.log('Playback stopped')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Playback stopped')
+      }
     }
   }
 

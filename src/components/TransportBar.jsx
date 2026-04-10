@@ -17,8 +17,6 @@ export default function TransportBar() {
     goToBar,
   } = useAudioSequencerContext()
 
-  console.log(`[TransportBar RENDER] barCount=${barCount}, activeBarIndex=${activeBarIndex}`, { goToBar: goToBar.toString().substring(0, 50) })
-
   const handlePlayClick = useCallback(async () => {
     try {
       await play()
@@ -70,17 +68,23 @@ export default function TransportBar() {
   }, [bpm, updateBPM])
 
   const handleSelectBarCount = useCallback((n) => {
-    console.log(`[TransportBar] handleSelectBarCount called with n=${n}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[TransportBar] handleSelectBarCount called with n=${n}`)
+    }
     initializeBarCount(n)
   }, [initializeBarCount])
 
   const handlePrevBar = useCallback(() => {
-    console.log(`[TransportBar] handlePrevBar called, going from ${activeBarIndex} to ${activeBarIndex - 1}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[TransportBar] handlePrevBar called, going from ${activeBarIndex} to ${activeBarIndex - 1}`)
+    }
     goToBar(activeBarIndex - 1)
   }, [activeBarIndex, goToBar])
 
   const handleNextBar = useCallback(() => {
-    console.log(`[TransportBar] handleNextBar called, going from ${activeBarIndex} to ${activeBarIndex + 1}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[TransportBar] handleNextBar called, going from ${activeBarIndex} to ${activeBarIndex + 1}`)
+    }
     goToBar(activeBarIndex + 1)
   }, [activeBarIndex, goToBar])
 
