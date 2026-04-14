@@ -1,10 +1,15 @@
-# Playground
+# Playground 
+### 🛠️ Prototype in Progress
 
 A browser-based polyrhythmic drum sequencer. Layer a 3-step guest pattern against a 4/4 host grid and hear how the two meters drift and realign across multiple bars.
 
+Currently in private prototype phase; visual demo available below:
+
+https://github.com/user-attachments/assets/d9bfd9e4-18b2-4318-8e37-3527681e184c
+
 ## What it does
 
-Playground lets you build drum patterns that pit two different meters against each other simultaneously — a classic polyrhythm technique used in everything from West African drumming to Steve Reich to boom-bap hip-hop.
+Playground lets you build drum patterns that pit two different meters against each other simultaneously — a classic polyrhythm technique used in everything from West African drumming, Progressive Rock to Steve Reich.
 
 - **5 instruments:** Kick, Snare, Hi-Hat, Bass, and Keys (Rhodes-style EP)
 - **Polyrhythmic grid:** a 3/16 guest pattern runs continuously across the bar boundary, visually showing where each group lands relative to the 4/4 host
@@ -12,16 +17,6 @@ Playground lets you build drum patterns that pit two different meters against ea
 - **BPM control:** tap the arrows or type directly into the BPM field
 - **Pattern presets:** Four On The Floor, Techno/House, Boom Bap, Polyrhythmic, and Random
 
-## Getting started
-
-```bash
-npm install
-npm run dev
-```
-
-Then open `http://localhost:5173` in your browser.
-
-Requires Node.js 18+. Built with React, Vite, and Tone.js.
 
 ## How to use it
 
@@ -72,6 +67,17 @@ src/
 ## Browser support
 
 Requires Web Audio API support. Works in all modern browsers (Chrome, Firefox, Safari, Edge). Audio context requires a user gesture to start — clicking Play or any instrument pad initialises it.
+
+## Local dev setup
+To explore the sequencer's logic and play with the patterns locally:
+
+1. Clone the repo
+   
+2. `npm install`
+   
+3. `npm run dev`
+   
+Requires Node.js 18+. Built with React, Vite, and Tone.js.
 
 ## License
 
