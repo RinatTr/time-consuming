@@ -52,12 +52,20 @@ const KeyboardIcon = () => (
   </svg>
 )
 
+const GuitarIcon = () => (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 16h8M12 20h8M12 12h8" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="16" cy="16" r="4" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+)
+
 const instruments = [
   { id: 'snare',   label: 'Snare',    Icon: SnareIcon },
   { id: 'hihat',   label: 'Hi-Hat',   Icon: HiHatIcon },
   { id: 'bass',   label: 'Bass',    Icon: BassIcon },
   { id: 'kick',    label: 'Kick',     Icon: KickIcon },
   { id: 'keys',    label: 'Keys',     Icon: KeyboardIcon },
+  { id: 'guitar',  label: 'Guitar',   Icon: GuitarIcon },
 ]
 
 export default function InstrumentPanel() {
@@ -72,7 +80,7 @@ export default function InstrumentPanel() {
       }
 
       // Trigger the sound preview
-      drumMachine.triggerDrum(instrumentId)
+      drumMachine.triggerInstrument(instrumentId)
 
       // Visual feedback: highlight the clicked instrument briefly
       setActiveInstrument(instrumentId)

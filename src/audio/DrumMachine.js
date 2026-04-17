@@ -18,12 +18,15 @@ class DrumMachine {
       hihat: null,
       bass: null,
       keys: null,
+      guitar: null,
     }
 
     // Intermediate routing nodes that need explicit disposal
     this.nodes = {
       snareHPF: null,
       keysChorus: null,
+      hihatHPF: null,
+      guitarDistortion: null,
     }
 
     this.sequence = null
@@ -123,6 +126,7 @@ class DrumMachine {
             sustain: 0,
         },
         volume: -8,
+          //send dry signal to HPF effect
         }).connect(this.nodes.hihatHPF)
 
     // --- Bass ---
@@ -143,9 +147,11 @@ class DrumMachine {
       delayTime: 0.5,
       depth: 0.4,
       wet: 0.4,
+      // the start method is needed to trigger the LFO in Tone.Chorus
     }).toDestination().start()
 
     // fatsine layering 3 detuned sines — mimics the soft tine character of a Rhodes
+    
     this.synths.keys = new Tone.PolySynth(Tone.Synth, {
       oscillator: {
         type: 'fatsine',
@@ -159,15 +165,35 @@ class DrumMachine {
         release: 0.8,  // ring out naturally
       },
       volume: -8,
+      //send dry signal to chorus
     }).connect(this.nodes.keysChorus)
+    
+      // --- Guitar ---
+    this.nodes.guitarDistortion = new Tone.Distortion(0.14).toDestination();
+
+    this.synths.guitar = new Tone.PolySynth(Tone.Synth, {
+      oscillator: {
+        type: 'fatsine',
+        count: 3,   // layered voices to add richness
+        spread: 30, // wider detune for a grittier tone
+      },
+      envelope: {
+        attack: 0.01,
+        decay: 0.1,  
+        sustain: 0.3,  
+        release: 0.05,  // short release for rhythmic playing
+      },
+      volume: -8,
+      //send dry signal to distortion
+    }).connect(this.nodes.guitarDistortion)
   }
 
   /**
-   * Trigger a drum sound by instrument name.
+   * Trigger a sequencer sound by instrument name.
    * Accepts an optional scheduled `time` from the Tone.js audio clock.
    * Falls back to Tone.now() for manual/preview triggers (e.g. pad clicks).
    */
-  triggerDrum(instrumentName, time = Tone.now()) {
+  triggerInstrument(instrumentName, time = Tone.now()) {
     if (!this.isInitialized) return
 
     switch (instrumentName) {
@@ -187,6 +213,9 @@ class DrumMachine {
         break
       case 'keys':
         this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], '8n', time)
+        break
+      case 'guitar':
+        this.synths.guitar.triggerAttackRelease(['G3', 'F4', 'Bb4', 'D5'], '8n', time)
         break
       default:
         console.warn(`Instrument not found: ${instrumentName}`)
@@ -235,7 +264,7 @@ class DrumMachine {
         // no secondary schedule() wrapper needed inside a Sequence callback
         Object.keys(this.gridState).forEach((instrumentName) => {
           if (this.gridState[instrumentName][step]) {
-            this.triggerDrum(instrumentName, time)
+            this.triggerInstrument(instrumentName, time)
           }
         })
       },
