@@ -36,6 +36,7 @@ class DrumMachine {
       hihat: new Array(64).fill(false),
       bass: new Array(64).fill(false),
       keys: new Array(64).fill(false),
+      guitar: new Array(64).fill(false),
     }
   }
 
@@ -175,14 +176,14 @@ class DrumMachine {
       oscillator: {
         type: 'fatsine',
         count: 3,   // layered voices to add richness
-        spread: 30, // wider detune for a grittier tone
+        spread: 15,
       },
       envelope: {
-        attack: 0.01,
-        decay: 0.1,  
-        sustain: 0.3,  
-        release: 0.05,  // short release for rhythmic playing
-      },
+      attack: 0, // Tightened for the initial click
+      decay: 0.4,    
+      sustain: 0.2,
+      release: 0.8,  
+    },
       volume: -8,
       //send dry signal to distortion
     }).connect(this.nodes.guitarDistortion)

@@ -124,6 +124,5 @@ export function generatePolyrhythmicPattern(barCount, beatInterval = 3, stepsPer
   for (let step = 0; step < totalSteps; step += beatInterval) {
     pattern[step] = true
   }
-  
   return pattern
 }
