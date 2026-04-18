@@ -72,7 +72,7 @@ export function useAudioSequencer() {
     }
 
     // Guest instruments (snare) get polyrhythmic pattern
-    const guestInstruments = ['snare']
+    const guestInstruments = ['snare', 'guitar']
     
     // Host instruments keep their base pattern tiled
     const hostInstruments = ['hihat', 'bass', 'kick', 'keys']
