@@ -32,9 +32,7 @@
   padding: 0 16px;
   height: 72px;
   border-bottom: 1px solid var(--border-subtle);
-  cursor: grab;
   position: relative;
-  transition: background 0.15s ease;
 }
 
 .instrument-row:hover {
@@ -106,18 +104,18 @@
 }
 
 .role-toggle--host {
-  color: var(--color-host, #a78bfa);
-  border-color: var(--color-host, #a78bfa);
+  color: var(--host-color, #a78bfa);
+  border-color: var(--host-color, #a78bfa);
 }
 
 .role-toggle--host:hover:not(:disabled) {
   background: rgba(167, 139, 250, 0.15);
-  border-color: var(--color-host, #a78bfa);
+  border-color: var(--host-color, #a78bfa);
 }
 
 .role-toggle--guest {
-  color: var(--color-guest, #fb923c);
-  border-color: var(--color-guest, #fb923c);
+  color: var(--guest-color, #fb923c);
+  border-color: var(--guest-color, #fb923c);
 }
 
 .role-toggle--guest:hover:not(:disabled) {
@@ -132,12 +130,10 @@
 
 .instrument-row.role--host{
   border-right: 3px solid var(--color-host, #a78bfa);
-  /* background: color-mix(in srgb, var(--color-host, #a78bfa), transparent 82%) ; */
 }
 
 .instrument-row.role--guest{
   border-right: 3px solid var(--color-guest, #fb923c);
-  /* background: color-mix(in srgb, var(--color-guest, #fb923c), transparent 82%) ; */
 }
 
 @keyframes preview-pulse {
