@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { BarCountSelector } from './BarCountSelector'
-import { BarPagination } from './BarPagination'
 import './TransportBar.css'
 
 export default function TransportBar() {
@@ -12,9 +11,13 @@ export default function TransportBar() {
     stop,
     updateBPM,
     barCount,
-    activeBarIndex,
-    initializeBarCount,
-    goToBar,
+    updateBarCount,
+    groupingOption,
+    updateGroupingOption,
+    hostMeter,
+    updateHostMeter,
+    subdivision,
+    updateSubdivision,
   } = useAudioSequencerContext()
 
   const handlePlayClick = useCallback(async () => {
@@ -37,60 +40,72 @@ export default function TransportBar() {
     updateBPM(bpm - 1)
   }, [bpm, updateBPM])
 
-  const handleBpmInputChange = useCallback((e) => {
-    const value = e.target.value
-    // Allow only numeric input
-    if (!/^\d*$/.test(value)) return
-    
-    // Allow empty string for user to clear and type
-    if (value === '') {
-      e.target.value = ''
-      return
-    }
-    
-    let numValue = parseInt(value, 10)
-    // Clamp value between 0 and 260
-    numValue = Math.min(Math.max(numValue, 0), 260)
-    updateBPM(numValue)
-  }, [updateBPM])
+  const handleBpmInputChange = useCallback(
+    (e) => {
+      const value = e.target.value
+      // Allow only numeric input
+      if (!/^\d*$/.test(value)) return
 
-  const handleBpmInputBlur = useCallback((e) => {
-    const value = e.target.value
-    // If empty on blur, reset to current BPM
-    if (value === '') {
-      e.target.value = bpm
-      return
-    }
-    
-    let numValue = parseInt(value, 10)
-    numValue = Math.min(Math.max(numValue, 0), 260)
-    updateBPM(numValue)
-  }, [bpm, updateBPM])
+      // Allow empty string for user to clear and type
+      if (value === '') {
+        e.target.value = ''
+        return
+      }
 
-  const handleSelectBarCount = useCallback((n) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[TransportBar] handleSelectBarCount called with n=${n}`)
-    }
-    // initializeBarCount is now async (may initialize audio context if needed)
-    // Fire and forget — no need to await in the UI callback
-    initializeBarCount(n).catch((error) => {
-      console.error('Error initializing bar count:', error)
-    })
-  }, [initializeBarCount])
+      let numValue = parseInt(value, 10)
+      // Clamp value between 0 and 260
+      numValue = Math.min(Math.max(numValue, 0), 260)
+      updateBPM(numValue)
+    },
+    [updateBPM]
+  )
 
-  const handlePrevBar = useCallback(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[TransportBar] handlePrevBar called, going from ${activeBarIndex} to ${activeBarIndex - 1}`)
-    }
-    goToBar(activeBarIndex - 1)
-  }, [activeBarIndex, goToBar])
+  const handleBpmInputBlur = useCallback(
+    (e) => {
+      const value = e.target.value
+      // If empty on blur, reset to current BPM
+      if (value === '') {
+        e.target.value = bpm
+        return
+      }
 
-  const handleNextBar = useCallback(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[TransportBar] handleNextBar called, going from ${activeBarIndex} to ${activeBarIndex + 1}`)
-    }
-    goToBar(activeBarIndex + 1)
-  }, [activeBarIndex, goToBar])
+      let numValue = parseInt(value, 10)
+      numValue = Math.min(Math.max(numValue, 0), 260)
+      updateBPM(numValue)
+    },
+    [bpm, updateBPM]
+  )
+
+  const handleSelectBarCount = useCallback(
+    (n) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[TransportBar] handleSelectBarCount called with n=${n}`)
+      }
+      updateBarCount(n)
+    },
+    [updateBarCount]
+  )
+
+  const handleSelectGrouping = useCallback(
+    (n) => {
+      updateGroupingOption(n)
+    },
+    [updateGroupingOption]
+  )
+
+  const handleSelectMeter = useCallback(
+    (meter) => {
+      updateHostMeter(meter)
+    },
+    [updateHostMeter]
+  )
+
+  const handleSelectSubdivision = useCallback(
+    (sub) => {
+      updateSubdivision(sub)
+    },
+    [updateSubdivision]
+  )
 
   return (
     <div className="transport-wrapper">
@@ -100,6 +115,68 @@ export default function TransportBar() {
         onSelectBarCount={handleSelectBarCount}
         isLocked={isPlaying}
       />
+
+      {/* Config Selectors */}
+      <div className="config-selectors">
+        {/* Grouping Option Selector */}
+        <div className="selector-group">
+          <span className="selector-label">Guest:</span>
+          <div className="button-group">
+            {[3, 4, 5].map((opt) => (
+              <button
+                key={opt}
+                className={`selector-btn ${groupingOption === opt ? 'selected' : ''}`}
+                onClick={() => handleSelectGrouping(opt)}
+                disabled={isPlaying}
+                aria-label={`Host Beat ${opt}`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Host Meter Selector */}
+        <div className="selector-group">
+          <span className="selector-label">Host:</span>
+          <div className="button-group">
+            {['4/4', '5/4', '6/8'].map((meter) => (
+              <button
+                key={meter}
+                className={`selector-btn ${hostMeter === meter ? 'selected' : ''}`}
+                onClick={() => handleSelectMeter(meter)}
+                disabled={isPlaying}
+                aria-label={`${meter} meter`}
+              >
+                {meter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Subdivision Selector */}
+        <div className="selector-group">
+          <span className="selector-label">Subdivision:</span>
+          <div className="button-group">
+            <button
+              className={`selector-btn ${subdivision === '16th' ? 'selected' : ''}`}
+              onClick={() => handleSelectSubdivision('16th')}
+              disabled={isPlaying}
+              aria-label="16th note subdivision"
+            >
+              16th
+            </button>
+            <button
+              className={`selector-btn ${subdivision === '8th-triplet' ? 'selected' : ''}`}
+              onClick={() => handleSelectSubdivision('8th-triplet')}
+              disabled={isPlaying}
+              aria-label="8th triplet subdivision"
+            >
+              8th Triplet
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Transport Controls */}
       <div className="transport-bar">
@@ -154,17 +231,6 @@ export default function TransportBar() {
           </svg>
         </button>
       </div>
-
-      {/* Bar Pagination */}
-      {barCount > 1 && (
-        <BarPagination
-          barCount={barCount}
-          activeBarIndex={activeBarIndex}
-          onPrev={handlePrevBar}
-          onNext={handleNextBar}
-          isPlaying={isPlaying}
-        />
-      )}
     </div>
   )
 }

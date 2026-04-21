@@ -1,123 +1,121 @@
-/* ── Layout wrapper ── */
-.rhythm-grid-wrapper {
+/* ── Full-Phrase Grid Layout ── */
+.rhythm-grid-phrase {
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--bg-surface);
   position: relative;
-}
-
-.rhythm-grid {
-  position: relative;
-  min-width: 680px;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0 12px;
+  gap: 12px;
+  padding: 16px 12px;
 }
 
-/* ── Column guide lines ── */
+/* ── Bar Pair Container ── */
+.bar-pair {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.bar-pair[data-active="true"] {
+  background: var(--bg-cell);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+}
+
+.bar-pair-rows {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Column guides (grid background) ── */
 .column-guides {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
   pointer-events: none;
   z-index: 0;
-  padding: 0 12px;
+  opacity: 0.4;
+  grid-template-columns: repeat(var(--steps-per-bar, 16), 1fr);
 }
 
-.col-guide {
+.column-guides .col-guide {
   border-right: 1px solid var(--border-subtle);
-  opacity: 0.5;
 }
 
-.col-guide.beat-guest  { border-right-color: rgba(249, 115, 22, 0.18); }
-.col-guide.beat-host    { border-right-color: rgba(168, 85, 247, 0.18); }
-.col-guide.playhead   {
-  background: rgba(56, 189, 248, 0.20);
+.column-guides .col-guide.playhead {
+  background: rgba(56, 189, 248, 0.15);
   border-right: none;
 }
 
-/* ── Tracks container ── */
-.tracks {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+/* ── Track rows ── */
+.track-row {
   position: relative;
   z-index: 1;
-}
-
-.track-row {
-  height: 72px;
   display: flex;
   align-items: center;
+  height: 56px;
   border-bottom: 1px solid var(--border-subtle);
+  padding: 0;
 }
 
-/* ── Empty track cells ── */
-.track-row--empty .track-cells {
-  display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  gap: 3px;
-  width: 100%;
-  height: 36px;
-  padding: 0 2px;
+.track-row:last-child {
+  border-bottom: none;
 }
 
-.cell--empty {
-  background: var(--bg-cell);
-  border-radius: 3px;
-  border: 1px solid var(--border-dim);
-  opacity: 0.5;
+.track-row--guest {
+  background: rgba(251, 146, 60, 0.03);
 }
 
-/* ── Shared track cells for blocks ── */
-.track-row--guest .track-cells,
-.track-row--host .track-cells {
+.track-row--host {
+  background: rgba(167, 139, 250, 0.03);
+}
+
+/* ── Track cells (blocks container) ── */
+.track-cells {
   display: flex;
   align-items: stretch;
   width: 100%;
-  height: 56px;
+  height: 100%;
   gap: 4px;
+  padding: 0 4px;
 }
 
-/* ── Block (coloured bar) ── */
+/* ── Block (grouped nubs) ── */
 .block {
-  flex-grow: var(--span);
+  flex-grow: var(--span, 1);
   flex-shrink: 1;
   flex-basis: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 6px;
-  overflow: visible;
+  border-radius: 4px;
+  overflow: hidden;
   position: relative;
   min-width: 0;
-  /* 3D raised effect with aerial view */
-  box-shadow:
-    /* Inner shadow for depth */
-    inset -2px -2px 4px rgba(0, 0, 0, 0.25),
-    inset 1px 1px 2px rgba(255, 255, 255, 0.15),
-    /* Outer shadow for lift */
-    0 4px 8px rgba(0, 0, 0, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: translateZ(0);
+  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .block-nubs {
   display: flex;
-  border-radius: 6px 6px 0px 0px;
-  gap: 3px;
-  padding: 4px 2px 2px 2px;
-  height: 12px;
-  align-items: flex-end;
+  gap: 2px;
+  padding: 2px;
+  height: 30%;
+  align-items: center;
   justify-content: space-around;
-  position: relative;
-  z-index: 2;
+  border-radius: 4px 4px 0 0;
 }
 
 .nub {
-  width: 32px;
+  /* flex: 1;
+  min-width: 0;
+  height: 8px;
+  border-radius: 50% 50% 2px 2px;
+  box-shadow: inset -1px -1px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1); */
+width: 32px;
   height: 10px;
   border-radius: 50% 50% 3px 3px;
   /* Individual nub 3D effect */
@@ -125,127 +123,81 @@
     inset -1px -1px 2px rgba(0, 0, 0, 0.2),
     inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.2),
     0 2px 3px rgba(0, 0, 0, 0.15);
-}
+  }
 
 .block-body {
   flex: 1;
-  border-radius: 0 0 6px 6px;
-  /* Body shading for 3D depth */
-  box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.15);
+  border-radius: 0 0 4px 4px;
+  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.15);
 }
 
-/* ── Guest colour (orange → red) ── */
+/* ── Guest blocks (orange) ── */
 .block--guest {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
+
+.block--guest:nth-child(1) { --guest-color: #f97316; }
+.block--guest:nth-child(2) { --guest-color: #f86119; }
+.block--guest:nth-child(3) { --guest-color: #f55018; }
+.block--guest:nth-child(4) { --guest-color: #f24020; }
+.block--guest:nth-child(5) { --guest-color: #ef3325; }
+.block--guest:nth-child(n + 6) { --guest-color: #ef4444; }
 
 .block--guest .block-nubs {
-  background: indianred;
+  background: var(--guest-color);
 }
-
-/* Guest block colors via CSS custom properties */
-.block--guest:nth-child(1) { --guest-color: linear-gradient(90deg, #f97316, #f86b1a); }
-.block--guest:nth-child(2) { --guest-color: linear-gradient(90deg, #f86119, #f55018); }
-.block--guest:nth-child(3) { --guest-color: linear-gradient(90deg, #f55018, #f24020); }
-.block--guest:nth-child(4) { --guest-color: linear-gradient(90deg, #f24020, #ef3325); }
-.block--guest:nth-child(5) { --guest-color: linear-gradient(90deg, #ef3325, #ef2222); }
-.block--guest:nth-child(6) { --guest-color: #ef4444; }
 
 .block--guest .block-body {
   background: var(--guest-color);
-  box-shadow: inset -1px -1px 3px rgba(180, 50, 0, 0.25);
+  opacity: 0.8;
 }
 
 .nub--guest {
-  background: linear-gradient(180deg, #fbbf5a 0%, var(--bass-start) 100%);
+  /* background: linear-gradient(180deg, #fbb75a 0%, var(--guest-color) 100%); */
 }
 
-.block--guest:nth-child(1) .nub--guest { background: linear-gradient(180deg, #fdd08a 0%, #f97316 100%); }
-.block--guest:nth-child(2) .nub--guest { background: linear-gradient(180deg, #fbc070 0%, #f96020 100%); }
-.block--guest:nth-child(3) .nub--guest { background: linear-gradient(180deg, #f8a060 0%, #f84000 100%); }
-
-/* ── Host colour (blue → violet) ── */
+/* ── Host blocks (purple/violet) ── */
 .block--host {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-/* Host block colors via CSS custom properties */
-.block--host:nth-child(1) { 
-  --host-color: #3b3fce;
-  --host-nub-bg: linear-gradient(180deg, #3b3fce 0%, #2f33a8 100%);
-  --host-nub-color: linear-gradient(180deg, #818cf8 0%, #3b3fce 100%);
-}
-.block--host:nth-child(2) { 
-  --host-color: #6244be;
-  --host-nub-bg: linear-gradient(180deg, #6244be 0%, #4f36a0 100%);
-  --host-nub-color: linear-gradient(180deg, #9880f0 0%, #6244be 100%);
-}
-.block--host:nth-child(3) { 
-  --host-color: #8649ae;
-  --host-nub-bg: linear-gradient(180deg, #8649ae 0%, #6e358f 100%);
-  --host-nub-color: linear-gradient(180deg, #b070e8 0%, #8649ae 100%);
-}
-.block--host:nth-child(4) { 
-  --host-color: #a855f7;
-  --host-nub-bg: linear-gradient(180deg, #a855f7 0%, #8640d9 100%);
-  --host-nub-color: linear-gradient(180deg, #d070f8 0%, #a855f7 100%);
-}
-
-.block--host .block-body { 
-  background: var(--host-color);
-  box-shadow: inset -1px -1px 3px rgba(40, 20, 100, 0.3);
-}
+.block--host:nth-child(1) { --host-color: #3b3fce; }
+.block--host:nth-child(2) { --host-color: #6244be; }
+.block--host:nth-child(3) { --host-color: #8649ae; }
+.block--host:nth-child(4) { --host-color: #a855f7; }
+.block--host:nth-child(5) { --host-color: #b56afb; }
 
 .block--host .block-nubs {
-  background: var(--host-nub-bg);
+  background: var(--host-color);
+}
+
+.block--host .block-body {
+  background: var(--host-color);
+  opacity: 0.8;
 }
 
 .nub--host {
-  background: linear-gradient(180deg, #818cf8 0%, var(--kb-start) 100%);
+  /* background: linear-gradient(180deg, #818cf8 0%, var(--host-color) 100%); */
 }
 
-.block--host .nub--host { 
-  background: var(--host-nub-color);
-}
-
-/* ── Meter badges ── */
-.meter-badge {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  background: var(--bg-surface);
-  opacity: 0.45;
-  border: 1px solid var(--border-dim);
-  border-radius: 4px;
-  padding: 4px 8px;
-  z-index: 10;
-}
-
-.meter-badge span {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-}
-
-/* ── Step ruler ── */
+/* ── Step ruler ──
 .step-ruler {
   display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  height: 36px;
+  grid-template-columns: repeat(var(--steps-per-bar, 16), 1fr);
+  height: 24px;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-subtle);
   align-items: center;
-  flex-shrink: 0;
   position: relative;
-  z-index: 2;
-}
+  z-index: 1;
+  gap: 4px;
+  padding: 0 4px;
+} */
 
 .step-num {
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-dim);
   letter-spacing: 0;
   transition: color 0.15s;
@@ -255,6 +207,27 @@
   color: var(--accent);
   font-weight: 700;
   background: var(--accent-dim);
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+/* ── Playhead line ── */
+.playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.8), rgba(56, 189, 248, 0.4));
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Empty cells ── */
+.cell--empty {
+  background: var(--bg-cell);
   border-radius: 3px;
-  padding: 2px 0;
+  border: 1px solid var(--border-dim);
+  opacity: 0.5;
+  flex: 1;
 }

@@ -1,4 +1,5 @@
 import * as Tone from 'tone'
+import { getToneTimeSignature } from './phraseCalculator'
 
 /**
  * DrumMachine - Audio engine for the polyrhythmic sequencer
@@ -31,12 +32,12 @@ class DrumMachine {
 
     this.sequence = null
     this.gridState = {
-      kick: new Array(64).fill(false),
-      snare: new Array(64).fill(false),
-      hihat: new Array(64).fill(false),
-      bass: new Array(64).fill(false),
-      keys: new Array(64).fill(false),
-      guitar: new Array(64).fill(false),
+      kick: new Array(80).fill(false),
+      snare: new Array(80).fill(false),
+      hihat: new Array(80).fill(false),
+      bass: new Array(80).fill(false),
+      keys: new Array(80).fill(false),
+      guitar: new Array(80).fill(false),
     }
   }
 
@@ -180,9 +181,9 @@ class DrumMachine {
       },
       envelope: {
       attack: 0, // Tightened for the initial click
-      decay: 0.4,    
+      decay: 0.1,    
       sustain: 0.2,
-      release: 0.8,  
+      release: 0.3,  
     },
       volume: -8,
       //send dry signal to distortion
@@ -216,7 +217,7 @@ class DrumMachine {
         this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], '8n', time)
         break
       case 'guitar':
-        this.synths.guitar.triggerAttackRelease(['G3', 'F4', 'Bb4', 'D5'], '8n', time)
+        this.synths.guitar.triggerAttackRelease(['G4', 'G5'], '8n', time)
         break
       default:
         console.warn(`Instrument not found: ${instrumentName}`)
@@ -242,8 +243,9 @@ class DrumMachine {
   /**
    * Create and start the sequence.
    * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
+   * @param {string} noteValue - Tone.js note value ('16n' for 16th, '8t' for 8th-triplet, default '16n')
    */
-  startSequence(stepCount = 16) {
+  startSequence(stepCount = 16, noteValue = '16n') {
     if (!this.isInitialized) return
 
     if (this.sequence) {
@@ -270,7 +272,7 @@ class DrumMachine {
         })
       },
       steps,
-      '16n'
+      noteValue
     )
 
     this.sequence.start(0)
@@ -279,15 +281,16 @@ class DrumMachine {
   /**
    * Start playback.
    * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
+   * @param {string} noteValue - Tone.js note value ('16n' for 16th, '8t' for 8th-triplet, default '16n')
    */
-  play(stepCount = 16) {
+  play(stepCount = 16, noteValue = '16n') {
     if (!this.isInitialized) {
       console.warn('DrumMachine not initialized. Call initialize() first.')
       return
     }
 
     if (!this.isPlaying) {
-      this.startSequence(stepCount)
+      this.startSequence(stepCount, noteValue)
       Tone.getTransport().start()
       this.isPlaying = true
       if (process.env.NODE_ENV === 'development') {
@@ -326,6 +329,16 @@ class DrumMachine {
    */
   getBPM() {
     return Tone.getTransport().bpm.value
+  }
+
+  /**
+   * Set the Tone.js time signature.
+   * @param {string} hostMeter - '4/4', '5/4', or '6/8'
+   */
+  setTimeSignature(hostMeter) {
+    if (this.isInitialized) {
+      Tone.getTransport().timeSignature = getToneTimeSignature(hostMeter)
+    }
   }
 
   /**

@@ -234,6 +234,9 @@ const PATTERNS_COMPUTABLE = {
   }
 
   
+  //i'd like to send the following explanations to claude for spec planning. 
+  // the most relevant files for context are useAudioSequencer.js, InstrumentPanel.jsx, and BarPagination.jsx, 
+  // but the overall app structure and goals are relevant as well, which you can find in the readme
  
   // computable pattern generation function:
   // desired result:
@@ -252,7 +255,9 @@ const PATTERNS_COMPUTABLE = {
   // and a default state indication for which instrument is guest or host for a start 
   // (we want that as a UI option to be toggled between for each instrument, but we need a default state to start with) 
 
-  // todo: function to build a grid UI based on same input, including block sizes etc.:
+  // todo: eventually, a function that also builds a grid UI based on same input, including block sizes etc.:
+  // we are changing the grid UI from bar pagination to one page, with all blocks visible and stacked from left to right, up and down, read like a sheet music. 
+
 
 }
 
