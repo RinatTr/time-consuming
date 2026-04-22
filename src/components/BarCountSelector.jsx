@@ -12,15 +12,7 @@ export function BarCountSelector({ barCount, isLocked, handlebarCountDecrease, h
   return (
     <div className="bpm-control">
           <span className="bpm-label">Bars:</span>
-          <input
-            type="text"
-            className="bpm-value"
-            value={barCount}
-            // onChange={handlebarCountInputChange}
-            // onBlur={handlebarCountInputBlur}
-            inputMode="numeric"
-            maxLength="1"
-          />
+          <span className="bpm-value">{barCount}</span>
           <div className="bpm-arrows">
             <button
               disabled={isLocked}
