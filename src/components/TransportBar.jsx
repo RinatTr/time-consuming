@@ -79,6 +79,15 @@ export default function TransportBar() {
     },
     [bpm, updateBPM]
   )
+  const handleBarCountIncrease = useCallback(() => {
+    if (barCount >= 4) return
+    updateBarCount(barCount + 1)
+  }, [barCount, updateBarCount])
+
+  const handleBarCountDecrease = useCallback(() => {
+    if (barCount <= 1) return
+    updateBarCount(barCount - 1)
+  }, [barCount, updateBarCount])
 
   const handleSelectBarCount = useCallback(
     (n) => {
@@ -113,13 +122,6 @@ export default function TransportBar() {
 
   return (
     <div className="transport-wrapper">
-      {/* Bar Count Selector */}
-      <BarCountSelector
-        barCount={barCount}
-        onSelectBarCount={handleSelectBarCount}
-        isLocked={isPlaying}
-      />
-
       {/* Config Selectors */}
       <div className="config-selectors">
         {/* Grouping Option Selector */}
@@ -173,7 +175,7 @@ export default function TransportBar() {
             <button
               className={`selector-btn ${subdivision === '8th-triplet' ? 'selected' : ''}`}
               onClick={() => handleSelectSubdivision('8th-triplet')}
-              disabled={isPlaying}
+              disabled={isPlaying || hostMeter === '6/8'} // Disable triplets if 6/8 is selected
               aria-label="8th triplet subdivision"
             >
               8th Triplet
@@ -234,6 +236,14 @@ export default function TransportBar() {
             <path d="M4 2.5l10 5.5-10 5.5V2.5z" />
           </svg>
         </button>
+        {/* Bar Count Selector */}
+        <BarCountSelector
+          barCount={barCount}
+          onSelectBarCount={handleSelectBarCount}
+          isLocked={isPlaying}
+          handlebarCountDecrease={handleBarCountDecrease}
+          handlebarCountIncrease={handleBarCountIncrease}
+        />
       </div>
     </div>
   )
