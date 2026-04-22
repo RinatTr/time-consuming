@@ -108,6 +108,10 @@ export default function TransportBar() {
 
   const handleSelectMeter = useCallback(
     (meter) => {
+      if (meter === '6/8' && subdivision === '8th-triplet') {
+        // If switching to 6/8, force subdivision to 16th
+        updateSubdivision('16th')
+      }
       updateHostMeter(meter)
     },
     [updateHostMeter]
