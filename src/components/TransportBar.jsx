@@ -108,9 +108,7 @@ export default function TransportBar() {
 
   const handleSelectMeter = useCallback(
     (meter) => {
-      console.log("HERRRE", meter, subdivision)
       if (meter === '6/8') {
-        console.log("HERRRE inside", meter, subdivision)
         // If switching to 6/8, force subdivision to 16th
         updateSubdivision('16th')
       }
