@@ -51,7 +51,7 @@ class DrumMachine {
 
     try {
       await Tone.start()
-      Tone.getTransport().bpm.value = 120
+      Tone.getTransport().bpm.value = 100
       Tone.getTransport().timeSignature = [4, 4]
       this.createSynths()
       this.isInitialized = true

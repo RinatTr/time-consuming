@@ -15,7 +15,7 @@ function buildGroupNubs(groupSizes) {
   }
   return groups
 }
-
+//Visual representation of the rhythm grid, showing host and guest groupings per bar, with a playhead indicator.
 function RhythmGridComponent() {
   const { currentStep, barCount, activeBarIndex, currentGroupings, currentStepsPerBar } =
     useAudioSequencerContext()

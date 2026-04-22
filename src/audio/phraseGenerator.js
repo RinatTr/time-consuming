@@ -58,9 +58,10 @@ export function generatePhrase(config, partsLibrary, roleAssignment) {
   for (const instrumentId of instrumentIds) {
     const role = roleAssignment[instrumentId]
 
-    // Fetch part from library
-    const part =
-      partsLibrary?.[instrumentId]?.[role]?.[hostMeter]?.[subdivision]?.[groupingOption] || []
+    // Fetch part from library 
+    const part = role === 'guest'
+      ? partsLibrary[instrumentId].guest[groupingOption]
+      : partsLibrary[instrumentId].host[hostMeter][subdivision]
 
     if (!part || part.length === 0) {
       if (process.env.NODE_ENV === 'development') {

@@ -33,10 +33,14 @@ export default function TransportBar() {
   }, [stop])
 
   const handleBpmIncrease = useCallback(() => {
+    // Clamp BPM between 0 and 260
+    if (bpm >= 260) return
     updateBPM(bpm + 1)
   }, [bpm, updateBPM])
 
   const handleBpmDecrease = useCallback(() => {
+    // Clamp BPM between 0 and 260
+    if (bpm <= 0) return
     updateBPM(bpm - 1)
   }, [bpm, updateBPM])
 

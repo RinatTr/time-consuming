@@ -11,7 +11,7 @@ import { getNoteValue } from '../audio/phraseCalculator'
 export function useAudioSequencer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
-  const [bpm, setBpm] = useState(120)
+  const [bpm, setBpm] = useState(100)
   const [isInitialized, setIsInitialized] = useState(false)
   const [barCount, setBarCount] = useState(1)
   const [activeBarIndex, setActiveBarIndex] = useState(0)
@@ -25,12 +25,29 @@ export function useAudioSequencer() {
     snare: 'host',
     hihat: 'guest',
     bass: 'host',
-    keys: 'host',
+    keys: 'guest',
     guitar: 'guest',
   })
   
-  // Groupings and steps tracking for grid rendering
-  const [currentGroupings, setCurrentGroupings] = useState({ guest: [], host: [] })
+  useEffect(() => {
+    if (!isInitialized) {
+      //initialize for rhythm grid to display on first load
+      initializeDisplay()
+    }
+  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment])
+
+  const initializeDisplay = async () => {
+    if (isInitialized) return
+    
+    const config = { barCount, groupingOption, hostMeter, subdivision }
+    const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
+    
+    setCurrentGroupings(result.groupings)
+    setCurrentStepsPerBar(result.stepsPerBar)
+  } 
+
+  // Groupings and steps tracking and defaults for grid module rendering
+  const [currentGroupings, setCurrentGroupings] = useState({host: [], guest: []})
   const [currentStepsPerBar, setCurrentStepsPerBar] = useState(16)
   
   const initializingRef = useRef(false)
@@ -141,6 +158,7 @@ export function useAudioSequencer() {
    * Update BPM
    */
   const updateBPM = (newBpm) => {
+    // BPM Clamped between 0 and 260 in UI
     DrumMachine.setBPM(newBpm)
     setBpm(newBpm)
   }
