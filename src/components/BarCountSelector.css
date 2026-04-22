@@ -4,10 +4,6 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg-panel);
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
 }
 
 .bar-count-label {
@@ -35,7 +31,6 @@
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.15s ease;
 }
 
 .bar-count-btn:hover:not(:disabled) {

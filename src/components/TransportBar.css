@@ -84,6 +84,72 @@
   background: var(--bg-cell-hover);
 }
 
+/* ── Config Selectors ── */
+.config-selectors {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  height: 40px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.selector-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  min-width: 75px;
+}
+
+.button-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-cell);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.selector-btn {
+  padding: 4px 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.selector-btn:hover:not(:disabled) {
+  background: var(--bg-cell-hover);
+  color: var(--text-primary);
+}
+
+.selector-btn.selected {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.selector-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Transport buttons ── */
 .transport-btn {
   display: flex;

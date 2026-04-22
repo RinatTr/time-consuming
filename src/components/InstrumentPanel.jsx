@@ -60,16 +60,16 @@ const GuitarIcon = () => (
 )
 
 const instruments = [
-  { id: 'snare',   label: 'Snare',    Icon: SnareIcon },
-  { id: 'hihat',   label: 'Hi-Hat',   Icon: HiHatIcon },
-  { id: 'bass',   label: 'Bass',    Icon: BassIcon },
-  { id: 'kick',    label: 'Kick',     Icon: KickIcon },
-  { id: 'keys',    label: 'Keys',     Icon: KeyboardIcon },
-  { id: 'guitar',  label: 'Guitar',   Icon: GuitarIcon },
+  { id: 'hihat', label: 'Hi-Hat', Icon: HiHatIcon },
+  { id: 'keys', label: 'Keys', Icon: KeyboardIcon },
+  { id: 'guitar', label: 'Guitar', Icon: GuitarIcon },
+  { id: 'bass', label: 'Bass', Icon: BassIcon },
+  { id: 'snare', label: 'Snare', Icon: SnareIcon },
+  { id: 'kick', label: 'Kick', Icon: KickIcon },
 ]
 
 export default function InstrumentPanel() {
-  const { drumMachine } = useAudioSequencerContext()
+  const { drumMachine, isPlaying, roleAssignment, setInstrumentRole } = useAudioSequencerContext()
   const [activeInstrument, setActiveInstrument] = useState(null)
 
   const handleInstrumentClick = async (instrumentId) => {
@@ -90,23 +90,42 @@ export default function InstrumentPanel() {
     }
   }
 
+  const handleRoleToggle = (instrumentId, e) => {
+    e.stopPropagation()
+    const currentRole = roleAssignment[instrumentId]
+    const newRole = currentRole === 'host' ? 'guest' : 'host'
+    setInstrumentRole(instrumentId, newRole)
+  }
+
   return (
     <aside className="instrument-panel">
-      <div className="panel-header">Instruments (Drag &amp; Drop)</div>
+      {/* <div className="panel-header">Instruments</div> */}
       <ul className="instrument-list">
-        {instruments.map(({ id, label, Icon }) => (
-          <li
-            key={id}
-            className={`instrument-row ${activeInstrument === id ? 'active' : ''}`}
-            onClick={() => handleInstrumentClick(id)}
-            title={`Click to preview ${label}`}
-          >
-            <div className="instrument-icon">
-              <Icon />
-            </div>
-            <span className="instrument-label">{label}</span>
-          </li>
-        ))}
+        {instruments.map(({ id, label, Icon }) => {
+          const role = roleAssignment[id] || 'host'
+          return (
+            <li
+              key={id}
+              className={`instrument-row ${activeInstrument === id ? 'active' : ''} role--${role}`}
+              onClick={() => handleInstrumentClick(id)}
+              title={`Click to preview ${label}`}
+            >
+              <div className="instrument-icon">
+                <Icon />
+              </div>
+              <span className="instrument-label">{label}</span>
+              <button
+                className={`role-toggle role-toggle--${role}`}
+                onClick={(e) => handleRoleToggle(id, e)}
+                disabled={isPlaying}
+                aria-label={`Toggle ${label} role: ${role}`}
+                title={`Current: ${role}. Click to toggle.`}
+              >
+                {role === 'host' ? 'Host' : 'Guest'}
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </aside>
   )

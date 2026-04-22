@@ -126,3 +126,70 @@ export function generatePolyrhythmicPattern(barCount, beatInterval = 3, stepsPer
   }
   return pattern
 }
+
+/**
+ * getStepsPerBar
+ * Returns the number of 16th-note-equivalent steps per bar
+ * for a given hostMeter + subdivision combination.
+ * 
+ * @param {string} hostMeter - '4/4', '5/4', or '6/8'
+ * @param {string} subdivision - '16th' or '8th-triplet'
+ * @returns {number} - steps per bar
+ */
+export function getStepsPerBar(hostMeter, subdivision) {
+  const table = {
+    '4/4': { '16th': 16, '8th-triplet': 12 },
+    '5/4': { '16th': 20, '8th-triplet': 15 },
+    '6/8': { '16th': 12, '8th-triplet': 9 },
+  }
+  return table[hostMeter]?.[subdivision] ?? 16
+}
+
+/**
+ * getHostGroupings
+ * Returns the host groupings array for one bar.
+ * These are the block sizes (in steps) for the host row.
+ * 
+ * @param {string} hostMeter - '4/4', '5/4', or '6/8'
+ * @param {string} subdivision - '16th' or '8th-triplet'
+ * @returns {number[]} - host groupings for one bar
+ */
+export function getHostGroupingsForMeter(hostMeter, subdivision) {
+  const table = {
+    '4/4': { '16th': [4, 4, 4, 4], '8th-triplet': [3, 3, 3, 3] },
+    '5/4': { '16th': [4, 4, 4, 4, 4], '8th-triplet': [3, 3, 3, 3, 3] },
+    '6/8': { '16th': [6, 6], '8th-triplet': [3, 3, 3] },
+  }
+  return table[hostMeter]?.[subdivision] ?? [4, 4, 4, 4]
+}
+
+/**
+ * getNoteValue
+ * Returns the Tone.js note value string for the sequencer tick.
+ * 
+ * @param {string} subdivision - '16th' or '8th-triplet'
+ * @returns {string} - Tone.js note value ('16n' or '8t')
+ */
+export function getNoteValue(subdivision) {
+  const map = {
+    '16th': '16n',
+    '8th-triplet': '8t',
+  }
+  return map[subdivision] ?? '16n'
+}
+
+/**
+ * getToneTimeSignature
+ * Returns the Tone.js timeSignature array for a given hostMeter.
+ * 
+ * @param {string} hostMeter - '4/4', '5/4', or '6/8'
+ * @returns {number[]} - [numerator, denominator]
+ */
+export function getToneTimeSignature(hostMeter) {
+  const map = {
+    '4/4': [4, 4],
+    '5/4': [5, 4],
+    '6/8': [6, 8],
+  }
+  return map[hostMeter] ?? [4, 4]
+}

@@ -32,9 +32,7 @@
   padding: 0 16px;
   height: 72px;
   border-bottom: 1px solid var(--border-subtle);
-  cursor: grab;
   position: relative;
-  transition: background 0.15s ease;
 }
 
 .instrument-row:hover {
@@ -87,6 +85,55 @@
   letter-spacing: 0.04em;
   color: var(--text-primary);
   flex: 1;
+}
+
+/* ── Role Toggle Button ── */
+.role-toggle {
+  padding: 4px 12px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.role-toggle--host {
+  color: var(--host-color, #a78bfa);
+  border-color: var(--host-color, #a78bfa);
+}
+
+.role-toggle--host:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: var(--host-color, #a78bfa);
+}
+
+.role-toggle--guest {
+  color: var(--guest-color, #fb923c);
+  border-color: var(--guest-color, #fb923c);
+}
+
+.role-toggle--guest:hover:not(:disabled) {
+  background: rgba(251, 146, 60, 0.15);
+  border-color: var(--color-guest, #fb923c);
+}
+
+.role-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.instrument-row.role--host{
+  border-right: 3px solid var(--color-host, #a78bfa);
+}
+
+.instrument-row.role--guest{
+  border-right: 3px solid var(--color-guest, #fb923c);
 }
 
 @keyframes preview-pulse {

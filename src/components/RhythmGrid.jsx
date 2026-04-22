@@ -1,10 +1,7 @@
 import React, { useMemo } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { usePlayheadTracking } from '../hooks/usePlayheadTracking'
-import { calculatePhraseGroupings, getHostGroupings, getGuestBlockBoundaries, getHostBlockBoundaries } from '../audio/phraseCalculator'
 import './RhythmGrid.css'
-
-const STEPS_PER_BAR = 16
 
 /**
  * For each grouping size, create an array of nub positions (1-indexed for display).
@@ -18,157 +15,125 @@ function buildGroupNubs(groupSizes) {
   }
   return groups
 }
-
+//Visual representation of the rhythm grid, showing host and guest groupings per bar, with a playhead indicator.
 function RhythmGridComponent() {
-  const { currentStep, barCount, activeBarIndex } = useAudioSequencerContext()
+  const { currentStep, barCount, activeBarIndex, currentGroupings, currentStepsPerBar } =
+    useAudioSequencerContext()
 
-  // Local playhead: only show playhead if in the current bar
-  const localPlayhead = currentStep % STEPS_PER_BAR
-  const playheadInThisBar = Math.floor(currentStep / STEPS_PER_BAR) === activeBarIndex
+  // Local playhead: steps within the active bar
+  const localPlayhead = currentStep % currentStepsPerBar
+  const playheadInThisBar = Math.floor(currentStep / currentStepsPerBar) === activeBarIndex
 
   usePlayheadTracking(localPlayhead, playheadInThisBar)
 
-  // Memoize groupings calculation - only recompute when barCount or activeBarIndex change
-  const memoizedGroupings = useMemo(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`  → useMemo triggered: recalculating for bar ${activeBarIndex}`)
-    }
-    const allBarGroupings = calculatePhraseGroupings(barCount, 3, STEPS_PER_BAR)
-    const guestGroupingsForBar = allBarGroupings[activeBarIndex] || []
-    const hostGroupingsForBar = getHostGroupings()
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`  → allBarGroupings:`, allBarGroupings)
-      console.log(`  → guestGroupingsForBar[${activeBarIndex}]:`, guestGroupingsForBar)
-    }
-
-    return { allBarGroupings, guestGroupingsForBar, hostGroupingsForBar }
-  }, [barCount, activeBarIndex])
-
-  const { allBarGroupings, guestGroupingsForBar, hostGroupingsForBar } = memoizedGroupings
-
-  // Build nubs for each group (for visual representation within blocks)
-  const guestGroupNubs = useMemo(() => buildGroupNubs(guestGroupingsForBar), [guestGroupingsForBar])
-  const hostGroupNubs = useMemo(() => buildGroupNubs(hostGroupingsForBar), [hostGroupingsForBar])
-
-  // Calculate beat positions within this bar's view
-  const guestBeats = useMemo(() => getGuestBlockBoundaries(guestGroupingsForBar), [guestGroupingsForBar])
-  const hostBeats = useMemo(() => getHostBlockBoundaries(), [])
+  // Memoize nub generation for guest and host groupings
+  const { guestGroupNubsByBar, hostGroupNubs } = useMemo(() => {
+    const guestByBar = (currentGroupings.guest || []).map((groupings) =>
+      buildGroupNubs(groupings)
+    )
+    const host = buildGroupNubs(currentGroupings.host || [])
+    return { guestGroupNubsByBar: guestByBar, hostGroupNubs: host }
+  }, [currentGroupings])
 
   return (
-    <div className="rhythm-grid-wrapper">
-      <div className="rhythm-grid" data-current-step={playheadInThisBar ? localPlayhead : -1}>
+    <div className="rhythm-grid-phrase">
+      {/* Render each bar as a bar-pair (guest row + host row) */}
+      {Array.from({ length: barCount }).map((_, barIndex) => {
+        const isActiveBar = barIndex === activeBarIndex
+        const guestGroupings = currentGroupings.guest?.[barIndex] || []
+        const guestGroupNubs = guestGroupNubsByBar[barIndex] || []
 
-        {/* ── Column guide lines ── */}
-        <div className="column-guides" aria-hidden="true">
-          {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
-            <div
-              key={i}
-              className={`col-guide ${guestBeats.has(i) ? 'beat-guest' : ''} ${hostBeats.has(i) ? 'beat-host' : ''} ${
-                playheadInThisBar && i === localPlayhead ? 'playhead' : ''
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* ── Track rows ── */}
-        <div className="tracks">
-
-          {/* Empty rows: Snare, Hi-Hat */}
-          {['snare', 'hihat'].map(id => (
-            <div key={id} className="track-row track-row--empty">
-              <div className="track-cells">
-                {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
-                  <div key={i} className="cell cell--empty" />
+        return (
+          <div
+            key={barIndex}
+            className="bar-pair"
+            data-bar={barIndex}
+            data-active={isActiveBar}
+          >
+            <div className="bar-pair-rows">
+              {/* Column guide lines — one per step in this bar */}
+              <div className="column-guides" aria-hidden="true">
+                {Array.from({ length: currentStepsPerBar }).map((_, stepIdx) => (
+                  <div
+                    key={stepIdx}
+                    className={`col-guide ${isActiveBar && stepIdx === localPlayhead ? 'playhead' : ''}`}
+                  />
                 ))}
               </div>
-            </div>
-          ))}
 
-          {/* Guest row (3/16 per bar) */}
-          <div className="track-row track-row--guest">
-            <div className="track-cells">
-              {guestGroupingsForBar.length > 0 ? (
-                guestGroupingsForBar.map((groupSize, gi) => {
-                  const nubs = guestGroupNubs[gi] || []
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log(`  [GUEST BLOCK ${gi}] size=${groupSize}, nubs=${nubs.length}`)
-                  }
-                  return (
-                    <div
-                      key={gi}
-                      className="block block--guest"
-                      style={{ '--span': groupSize }}
-                    >
-                      {gi === 0 && (
-                        <div className="meter-badge meter-badge--guest">
-                          <span>3/16</span>
+              {/* Guest row */}
+              <div className="track-row track-row--guest">
+                <div className="track-cells">
+                  {guestGroupings.length > 0 ? (
+                    guestGroupings.map((groupSize, gi) => {
+                      const nubs = guestGroupNubs[gi] || []
+                      return (
+                        <div
+                          key={gi}
+                          className="block block--guest"
+                          style={{ '--span': groupSize }}
+                        >
+                          <div className="block-nubs">
+                            {nubs.map((step, si) => (
+                              <div key={si} className="nub nub--guest" />
+                            ))}
+                          </div>
+                          <div className="block-body" />
                         </div>
-                      )}
-                      <div className="block-nubs">
-                        {nubs.map((step, si) => (
-                          <div key={si} className="nub nub--guest" />
-                        ))}
+                      )
+                    })
+                  ) : (
+                    <div className="cell cell--empty" />
+                  )}
+                </div>
+              </div>
+
+              {/* Host row */}
+              <div className="track-row track-row--host">
+                <div className="track-cells">
+                  {(currentGroupings.host || []).map((groupSize, gi) => {
+                    const nubs = hostGroupNubs[gi] || []
+                    return (
+                      <div
+                        key={gi}
+                        className="block block--host"
+                        style={{ '--span': groupSize }}
+                      >
+                        <div className="block-nubs">
+                          {nubs.map((step, si) => (
+                            <div key={si} className="nub nub--host" />
+                          ))}
+                        </div>
+                        <div className="block-body" />
                       </div>
-                      <div className="block-body" />
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="cell cell--empty" />
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Step ruler
+              <div className="step-ruler">
+                {Array.from({ length: currentStepsPerBar }).map((_, stepIdx) => (
+                  <div
+                    key={stepIdx}
+                    className={`step-num ${stepIdx === 0 ? 'step-num--active' : ''}`}
+                  >
+                    {stepIdx + 1}
+                  </div>
+                ))}
+              </div> */}
+
+              {/* Playhead — only rendered inside active bar-pair */}
+              {isActiveBar && (
+                <div
+                  className="playhead-line"
+                  style={{ left: `${(localPlayhead / currentStepsPerBar) * 100}%` }}
+                />
               )}
             </div>
           </div>
-
-          {/* Kick row — empty */}
-          <div className="track-row track-row--empty">
-            <div className="track-cells">
-              {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
-                <div key={i} className="cell cell--empty" />
-              ))}
-            </div>
-          </div>
-
-          {/* Host row (4/4) */}
-          <div className="track-row track-row--host">
-            <div className="track-cells">
-              {hostGroupingsForBar.map((groupSize, gi) => {
-                const nubs = hostGroupNubs[gi] || []
-                return (
-                  <div
-                    key={gi}
-                    className="block block--host"
-                    style={{ '--span': groupSize }}
-                  >
-                    {gi === 0 && (
-                      <div className="meter-badge meter-badge--host">
-                        <span>4/4</span>
-                      </div>
-                    )}
-                    <div className="block-nubs">
-                      {nubs.map((step, si) => (
-                        <div key={si} className="nub nub--host" />
-                      ))}
-                    </div>
-                    <div className="block-body" />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Step number ruler ── */}
-        <div className="step-ruler">
-          {Array.from({ length: STEPS_PER_BAR }).map((_, i) => (
-            <div key={i} className={`step-num ${i === 0 ? 'step-num--active' : ''}`}>
-              {i + 1}
-            </div>
-          ))}
-        </div>
-
-      </div>
+        )
+      })}
     </div>
   )
 }

@@ -1,27 +1,66 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import DrumMachine from '../audio/DrumMachine'
-import { loadPattern, PATTERNS } from '../audio/patterns'
-import { generatePolyrhythmicPattern } from '../audio/phraseCalculator'
+import { generatePhrase } from '../audio/phraseGenerator'
+import { PARTS_LIBRARY } from '../audio/partsLibrary'
+import { getNoteValue } from '../audio/phraseCalculator'
 
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
- * Handles initialization, playback control, BPM updates, playhead tracking, and multi-bar sequencing
+ * Handles initialization, playback control, BPM updates, bar selection, and parametric phrase generation
  */
 export function useAudioSequencer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
-  const [bpm, setBpm] = useState(120)
+  const [bpm, setBpm] = useState(100)
   const [isInitialized, setIsInitialized] = useState(false)
   const [barCount, setBarCount] = useState(1)
   const [activeBarIndex, setActiveBarIndex] = useState(0)
+  
+  // New parametric state
+  const [groupingOption, setGroupingOption] = useState(3)
+  const [hostMeter, setHostMeter] = useState('4/4')
+  const [subdivision, setSubdivision] = useState('16th')
+  const [roleAssignment, setRoleAssignment] = useState({
+    kick: 'host',
+    snare: 'host',
+    hihat: 'guest',
+    bass: 'host',
+    keys: 'guest',
+    guitar: 'guest',
+  })
+  
+  useEffect(() => {
+    if (!isInitialized) {
+      //initialize for rhythm grid to display on first load
+      initializeDisplay()
+    }
+  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment])
+
+  const initializeDisplay = async () => {
+    if (isInitialized) return
+    
+    const config = { barCount, groupingOption, hostMeter, subdivision }
+    const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
+    
+    setCurrentGroupings(result.groupings)
+    setCurrentStepsPerBar(result.stepsPerBar)
+  } 
+
+  // Groupings and steps tracking and defaults for grid module rendering
+  const [currentGroupings, setCurrentGroupings] = useState({host: [], guest: []})
+  const [currentStepsPerBar, setCurrentStepsPerBar] = useState(16)
+  
   const initializingRef = useRef(false)
 
   // DEBUG: Log all state updates
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, isPlaying=${isPlaying}`)
+      console.log(
+        `[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, ` +
+        `isPlaying=${isPlaying}, grouping=${groupingOption}, meter=${hostMeter}, subdivision=${subdivision}`
+      )
     }
-  }, [barCount, activeBarIndex, isPlaying])
+  }, [barCount, activeBarIndex, isPlaying, groupingOption, hostMeter, subdivision])
 
   const initializeAudio = async () => {
     if (initializingRef.current || isInitialized) return
@@ -30,10 +69,19 @@ export function useAudioSequencer() {
     try {
       await DrumMachine.initialize()
       setBpm(DrumMachine.getBPM())
-      // Load polyrhythmic pattern
-      loadPattern('polyrhythmic', DrumMachine)
-      // FIX #2: Set initialized flag AFTER pattern is loaded into gridState
-      // This closes the race window where initializeBarCount might read empty gridState
+      
+      // Generate initial phrase with default config
+      const config = { barCount, groupingOption, hostMeter, subdivision }
+      const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
+      
+      Object.entries(result.patterns).forEach(([id, pattern]) => {
+        DrumMachine.setGridPattern(id, pattern)
+      })
+      
+      DrumMachine.setTimeSignature(hostMeter)
+      setCurrentGroupings(result.groupings)
+      setCurrentStepsPerBar(result.stepsPerBar)
+      
       setIsInitialized(true)
     } catch (error) {
       console.error('Failed to initialize audio:', error)
@@ -42,90 +90,46 @@ export function useAudioSequencer() {
   }
 
   /**
-   * Initialize multi-bar mode: tile the 16-step pattern across N bars
-   * For guest instruments (e.g., snare), apply polyrhythmic pattern
-   * For host instruments, tile the base pattern
-   * 
-   * FIX #1: If audio hasn't been initialized yet, initialize now (bar selector click is a valid gesture)
-   * This ensures gridState is populated with the real polyrhythmic pattern before expansion.
-   * 
-   * WARNING: This assumes polyrhythmic pattern is loaded as the base. If user edits
-   * are made before calling this (planned feature), those edits will be lost on resize.
+   * Regeneration effect: when config or role assignment changes (and not playing),
+   * regenerate the phrase and load it into DrumMachine.
    */
-  const initializeBarCount = useCallback(async (n) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[initializeBarCount] called with n=${n}, isPlaying=${isPlaying}`)
-    }
-    if (n < 1 || n > 4 || isPlaying) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[initializeBarCount] BLOCKED: n in range=${n >= 1 && n <= 4}, isPlaying=${isPlaying}`)
-      }
-      return
-    }
+  useEffect(() => {
+    if (isPlaying) return
+    if (!isInitialized) return
 
-    // If audio context hasn't been initialized, do it now to ensure gridState is populated
-    if (!isInitialized) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[initializeBarCount] Audio not yet initialized; initializing now...`)
-      }
-      await initializeAudio()
-    }
+    const config = { barCount, groupingOption, hostMeter, subdivision }
+    const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
 
-    // Guest instruments (snare) get polyrhythmic pattern
-    const guestInstruments = ['snare', 'guitar']
-    
-    // Host instruments keep their base pattern tiled
-    const hostInstruments = ['hihat', 'bass', 'kick', 'keys']
-
-    // Apply polyrhythmic pattern to guest instruments via public API
-    guestInstruments.forEach((instrumentName) => {
-      const polyPattern = generatePolyrhythmicPattern(n, 3, 16)
-      DrumMachine.setGridPattern(instrumentName, polyPattern)
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[initializeBarCount] Applied polyrhythmic pattern to ${instrumentName}:`, polyPattern)
-      }
+    Object.entries(result.patterns).forEach(([id, pattern]) => {
+      DrumMachine.setGridPattern(id, pattern)
     })
 
-    // Tile each host instrument's 16-step pattern across N bars via public API
-    hostInstruments.forEach((instrumentName) => {
-      const basePattern = DrumMachine.getGridPattern(instrumentName).slice(0, 16)
-      const fullPattern = new Array(n * 16).fill(false)
-
-      for (let bar = 0; bar < n; bar++) {
-        const barOffset = bar * 16
-        for (let step = 0; step < 16; step++) {
-          fullPattern[barOffset + step] = basePattern[step]
-        }
-      }
-
-      DrumMachine.setGridPattern(instrumentName, fullPattern)
-    })
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[initializeBarCount] Setting barCount=${n}, activeBarIndex=0`)
-    }
-    setBarCount(n)
-    setActiveBarIndex(0)
-  }, [isPlaying, isInitialized])
+    DrumMachine.setTimeSignature(hostMeter)
+    setCurrentGroupings(result.groupings)
+    setCurrentStepsPerBar(result.stepsPerBar)
+  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment, isPlaying, isInitialized])
 
   /**
    * Navigate to a specific bar (only when stopped)
    */
-  const goToBar = useCallback((barIndex) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
-    }
-    if (isPlaying || barIndex < 0 || barIndex >= barCount) {
+  const goToBar = useCallback(
+    (barIndex) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+        console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
       }
-      return
-    }
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
-    }
-    setActiveBarIndex(barIndex)
-  }, [isPlaying, barCount])
+      if (isPlaying || barIndex < 0 || barIndex >= barCount) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+        }
+        return
+      }
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
+      }
+      setActiveBarIndex(barIndex)
+    },
+    [isPlaying, barCount]
+  )
 
   /**
    * Start playback
@@ -134,8 +138,9 @@ export function useAudioSequencer() {
     if (!isInitialized) {
       await initializeAudio()
     }
-    const stepCount = barCount * 16
-    DrumMachine.play(stepCount)
+    const stepCount = barCount * currentStepsPerBar
+    const noteValue = getNoteValue(subdivision)
+    DrumMachine.play(stepCount, noteValue)
     setIsPlaying(true)
   }
 
@@ -153,6 +158,7 @@ export function useAudioSequencer() {
    * Update BPM
    */
   const updateBPM = (newBpm) => {
+    // BPM Clamped between 0 and 260 in UI
     DrumMachine.setBPM(newBpm)
     setBpm(newBpm)
   }
@@ -185,25 +191,76 @@ export function useAudioSequencer() {
     return DrumMachine.getGridPattern(instrumentName)
   }
 
+  /**
+   * Update bar count (blocked during playback)
+   */
+  const updateBarCount = useCallback(
+    (n) => {
+      if (isPlaying || n < 1 || n > 4) return
+      setBarCount(n)
+      setActiveBarIndex(0)
+    },
+    [isPlaying]
+  )
+
+  /**
+   * Update grouping option (blocked during playback)
+   */
+  const updateGroupingOption = useCallback(
+    (n) => {
+      if (isPlaying) return
+      setGroupingOption(n)
+    },
+    [isPlaying]
+  )
+
+  /**
+   * Update host meter (blocked during playback)
+   */
+  const updateHostMeter = useCallback(
+    (meter) => {
+      if (isPlaying) return
+      setHostMeter(meter)
+    },
+    [isPlaying]
+  )
+
+  /**
+   * Update subdivision (blocked during playback)
+   */
+  const updateSubdivision = useCallback(
+    (sub) => {
+      if (isPlaying) return
+      setSubdivision(sub)
+    },
+    [isPlaying]
+  )
+
+  /**
+   * Update a single instrument's role (blocked during playback)
+   */
+  const setInstrumentRole = useCallback(
+    (instrumentId, role) => {
+      if (isPlaying) return
+      setRoleAssignment((prev) => ({ ...prev, [instrumentId]: role }))
+    },
+    [isPlaying]
+  )
+
   // Memoize step change handler to prevent re-creating it on every render
-  // Note: we derive bar index from step directly without the isPlaying guard,
-  // since the step value itself indicates whether we're playing (if step > 0 and advancing)
   const handleStepChange = useCallback((globalStep) => {
     setCurrentStep(globalStep)
 
     // Auto-follow: update activeBarIndex during playback
-    // (derive bar index directly from step; if playback has stopped, the next step change
-    // will signal stop with step=0 or will reset the state externally)
-    const newBarIndex = Math.floor(globalStep / 16)
+    const newBarIndex = Math.floor(globalStep / currentStepsPerBar)
     setActiveBarIndex(newBarIndex)
-  }, [])
+  }, [currentStepsPerBar])
 
   // Subscribe to step changes for playhead tracking and auto-follow during playback
   useEffect(() => {
     DrumMachine.onStepChange(handleStepChange)
 
     return () => {
-      // Clean up listener to prevent accumulation
       DrumMachine.offStepChange(handleStepChange)
     }
   }, [handleStepChange])
@@ -211,7 +268,6 @@ export function useAudioSequencer() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      // Dispose resources if component unmounts
       // Optionally: DrumMachine.dispose()
     }
   }, [])
@@ -224,6 +280,12 @@ export function useAudioSequencer() {
     isInitialized,
     barCount,
     activeBarIndex,
+    groupingOption,
+    hostMeter,
+    subdivision,
+    roleAssignment,
+    currentGroupings,
+    currentStepsPerBar,
 
     // Control methods
     play,
@@ -231,8 +293,14 @@ export function useAudioSequencer() {
     updateBPM,
 
     // Multi-bar methods
-    initializeBarCount,
     goToBar,
+    updateBarCount,
+
+    // Config update methods
+    updateGroupingOption,
+    updateHostMeter,
+    updateSubdivision,
+    setInstrumentRole,
 
     // Grid methods
     setGridCell,
