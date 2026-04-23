@@ -38,8 +38,7 @@
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.2em;
   color: var(--text-primary);
 }
 

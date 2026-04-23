@@ -69,10 +69,10 @@ const instruments = [
 ]
 
 export default function InstrumentPanel() {
-  const { drumMachine, isPlaying, roleAssignment, setInstrumentRole } = useAudioSequencerContext()
+  const { drumMachine, isPlaying, roleAssignment, setInstrumentRole, selectedInstrument, selectInstrument } = useAudioSequencerContext()
   const [activeInstrument, setActiveInstrument] = useState(null)
 
-  const handleInstrumentClick = async (instrumentId) => {
+  const handleIconClick = async (instrumentId) => {
     try {
       // Ensure audio is initialized (lazy init on first interaction)
       if (!drumMachine.isInitialized) {
@@ -94,6 +94,7 @@ export default function InstrumentPanel() {
     e.stopPropagation()
     const currentRole = roleAssignment[instrumentId]
     const newRole = currentRole === 'host' ? 'guest' : 'host'
+    console.log("HERE", newRole)
     setInstrumentRole(instrumentId, newRole)
   }
 
@@ -103,14 +104,22 @@ export default function InstrumentPanel() {
       <ul className="instrument-list">
         {instruments.map(({ id, label, Icon }) => {
           const role = roleAssignment[id] || 'host'
+          const isSelected = selectedInstrument === id
           return (
             <li
               key={id}
-              className={`instrument-row ${activeInstrument === id ? 'active' : ''} role--${role}`}
-              onClick={() => handleInstrumentClick(id)}
-              title={`Click to preview ${label}`}
+              className={`instrument-row ${activeInstrument === id ? 'active' : ''} role--${role}${isSelected ? ' instrument-row--selected' : ''}`}
+              onClick={() => selectInstrument(id)}
+              title={`Click to select ${label}`}
             >
-              <div className="instrument-icon">
+              <div
+                className="instrument-icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleIconClick(id)
+                }}
+                title={`Click to preview ${label}`}
+              >
                 <Icon />
               </div>
               <span className="instrument-label">{label}</span>
