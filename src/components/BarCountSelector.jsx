@@ -10,10 +10,10 @@ export function BarCountSelector({ barCount, isLocked, handlebarCountDecrease, h
   // const options = [1, 2, 3, 4]
 
   return (
-    <div className="bpm-control">
-          <span className="bpm-label">Bars:</span>
-          <span className="bpm-value">{barCount}</span>
-          <div className="bpm-arrows">
+    <div className="transport-control">
+          <span className="transport-label">Bars:</span>
+          <span className="transport-value">{barCount}</span>
+          <div className="transport-arrows">
             <button
               disabled={isLocked}
               className="arrow-btn"

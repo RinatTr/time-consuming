@@ -10,7 +10,7 @@ export default function App() {
     <AudioSequencerProvider>
       <div className="app">
         <header className="app-header">
-          <h1 className="app-title">Playground</h1>
+          <h1 className="app-title">playground</h1>
         </header>
 
         <div className="app-workspace">

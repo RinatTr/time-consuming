@@ -26,7 +26,7 @@
   background: var(--bg-cell);
   color: var(--text-secondary);
   border: 1px solid var(--border-dim);
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   cursor: pointer;
   font-family: var(--font-ui);
   font-size: 14px;

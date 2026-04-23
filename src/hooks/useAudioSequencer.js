@@ -29,6 +29,24 @@ export function useAudioSequencer() {
     guitar: 'guest',
   })
   
+  // Instrument selection and pattern editing state
+  const [selectedInstrument, setSelectedInstrument] = useState(null)
+  const [patterns, setPatterns] = useState({
+    kick: new Array(80).fill(false),
+    snare: new Array(80).fill(false),
+    hihat: new Array(80).fill(false),
+    bass: new Array(80).fill(false),
+    keys: new Array(80).fill(false),
+    guitar: new Array(80).fill(false),
+  })
+
+  /**
+   * Toggle instrument selection (select if not selected, deselect if already selected)
+   */
+  const selectInstrument = useCallback((id) => {
+    setSelectedInstrument(prev => prev === id ? null : id)
+  }, [])
+  
   useEffect(() => {
     if (!isInitialized) {
       //initialize for rhythm grid to display on first load
@@ -77,6 +95,7 @@ export function useAudioSequencer() {
       Object.entries(result.patterns).forEach(([id, pattern]) => {
         DrumMachine.setGridPattern(id, pattern)
       })
+      setPatterns(result.patterns)
       
       DrumMachine.setTimeSignature(hostMeter)
       setCurrentGroupings(result.groupings)
@@ -103,6 +122,7 @@ export function useAudioSequencer() {
     Object.entries(result.patterns).forEach(([id, pattern]) => {
       DrumMachine.setGridPattern(id, pattern)
     })
+    setPatterns(result.patterns)
 
     DrumMachine.setTimeSignature(hostMeter)
     setCurrentGroupings(result.groupings)
@@ -166,9 +186,14 @@ export function useAudioSequencer() {
   /**
    * Set grid cell active/inactive
    */
-  const setGridCell = (instrumentName, step, isActive) => {
+  const setGridCell = useCallback((instrumentName, step, isActive) => {
     DrumMachine.setGridCell(instrumentName, step, isActive)
-  }
+    setPatterns(prev => {
+      const updated = [...prev[instrumentName]]
+      updated[step] = isActive
+      return { ...prev, [instrumentName]: updated }
+    })
+  }, [])
 
   /**
    * Get grid cell state
@@ -286,6 +311,8 @@ export function useAudioSequencer() {
     roleAssignment,
     currentGroupings,
     currentStepsPerBar,
+    selectedInstrument,
+    patterns,
 
     // Control methods
     play,
@@ -307,6 +334,7 @@ export function useAudioSequencer() {
     getGridCell,
     setPattern,
     getPattern,
+    selectInstrument,
 
     // Direct access to drum machine (if needed)
     drumMachine: DrumMachine,

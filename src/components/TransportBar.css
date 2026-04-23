@@ -17,20 +17,20 @@
   flex-shrink: 0;
 }
 
-/* ── BPM control ── */
-.bpm-control {
+/* ── Transport control (BPM, Bar Count) ── */
+.transport-control {
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--bg-cell);
   border: 1px solid var(--border-dim);
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   padding: 0 10px;
   height: 34px;
   min-width: 120px;
 }
 
-.bpm-label {
+.transport-label {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
@@ -38,7 +38,7 @@
   letter-spacing: 0.05em;
 }
 
-.bpm-value {
+.transport-value {
   font-family: var(--font-mono);
   font-size: 14px;
   color: var(--text-primary);
@@ -53,15 +53,15 @@
   transition: color 0.12s;
 }
 
-.bpm-value:focus {
+.transport-value:focus {
   color: var(--accent);
 }
 
-.bpm-value::selection {
+.transport-value::selection {
   background: rgba(56, 189, 248, 0.3);
 }
 
-.bpm-arrows {
+.transport-arrows {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -75,7 +75,7 @@
   line-height: 1;
   cursor: pointer;
   padding: 1px 3px;
-  border-radius: 2px;
+  border-radius: var(--border-radius);
   transition: color 0.12s, background 0.12s;
 }
 
@@ -117,7 +117,7 @@
   gap: 4px;
   background: var(--bg-cell);
   border: 1px solid var(--border-dim);
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   padding: 2px;
 }
 
@@ -130,7 +130,7 @@
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--border-radius);
   transition: background 0.12s, color 0.12s;
 }
 
@@ -157,7 +157,7 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   border: 1px solid var(--border-dim);
   background: var(--bg-cell);
   color: var(--text-secondary);

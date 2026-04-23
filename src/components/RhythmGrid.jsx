@@ -17,7 +17,7 @@ function buildGroupNubs(groupSizes) {
 }
 //Visual representation of the rhythm grid, showing host and guest groupings per bar, with a playhead indicator.
 function RhythmGridComponent() {
-  const { currentStep, barCount, activeBarIndex, currentGroupings, currentStepsPerBar } =
+  const { currentStep, barCount, activeBarIndex, currentGroupings, currentStepsPerBar, selectedInstrument, roleAssignment, patterns, setGridCell } =
     useAudioSequencerContext()
 
   // Local playhead: steps within the active bar
@@ -25,6 +25,13 @@ function RhythmGridComponent() {
   const playheadInThisBar = Math.floor(currentStep / currentStepsPerBar) === activeBarIndex
 
   usePlayheadTracking(localPlayhead, playheadInThisBar)
+
+  // Handle nub click to toggle step
+  const handleNubClick = (absoluteStep) => {
+    if (!selectedInstrument) return
+    const current = patterns[selectedInstrument]?.[absoluteStep] ?? false
+    setGridCell(selectedInstrument, absoluteStep, !current)
+  }
 
   // Memoize nub generation for guest and host groupings
   const { guestGroupNubsByBar, hostGroupNubs } = useMemo(() => {
@@ -67,6 +74,16 @@ function RhythmGridComponent() {
                   {guestGroupings.length > 0 ? (
                     guestGroupings.map((groupSize, gi) => {
                       const nubs = guestGroupNubs[gi] || []
+                      // Compute block offset (sum of group sizes before this group)
+                      let blockOffset = 0
+                      for (let j = 0; j < gi; j++) {
+                        blockOffset += guestGroupings[j]
+                      }
+                      
+                      // Determine if this row matches the selected instrument's role
+                      const isSelectedRow = selectedInstrument !== null &&
+                        roleAssignment[selectedInstrument] === 'guest'
+                      
                       return (
                         <div
                           key={gi}
@@ -74,9 +91,20 @@ function RhythmGridComponent() {
                           style={{ '--span': groupSize }}
                         >
                           <div className="block-nubs">
-                            {nubs.map((step, si) => (
-                              <div key={si} className="nub nub--guest" />
-                            ))}
+                            {nubs.map((step, si) => {
+                              const absoluteStep = barIndex * currentStepsPerBar + blockOffset + si
+                              const isActive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === true
+                              const isInactive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === false
+                              
+                              return (
+                                <div
+                                  key={si}
+                                  className={`nub nub--guest${isActive ? ' nub--active' : ''}${isInactive ? ' nub--inactive' : ''}`}
+                                  onClick={isSelectedRow ? () => handleNubClick(absoluteStep) : undefined}
+                                  style={isSelectedRow ? { cursor: 'pointer' } : undefined}
+                                />
+                              )
+                            })}
                           </div>
                           <div className="block-body" />
                         </div>
@@ -93,6 +121,16 @@ function RhythmGridComponent() {
                 <div className="track-cells">
                   {(currentGroupings.host || []).map((groupSize, gi) => {
                     const nubs = hostGroupNubs[gi] || []
+                    // Compute block offset (sum of group sizes before this group)
+                    let blockOffset = 0
+                    for (let j = 0; j < gi; j++) {
+                      blockOffset += (currentGroupings.host || [])[j]
+                    }
+                    
+                    // Determine if this row matches the selected instrument's role
+                    const isSelectedRow = selectedInstrument !== null &&
+                      roleAssignment[selectedInstrument] === 'host'
+                    
                     return (
                       <div
                         key={gi}
@@ -100,9 +138,20 @@ function RhythmGridComponent() {
                         style={{ '--span': groupSize }}
                       >
                         <div className="block-nubs">
-                          {nubs.map((step, si) => (
-                            <div key={si} className="nub nub--host" />
-                          ))}
+                          {nubs.map((step, si) => {
+                            const absoluteStep = barIndex * currentStepsPerBar + blockOffset + si
+                            const isActive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === true
+                            const isInactive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === false
+                            
+                            return (
+                              <div
+                                key={si}
+                                className={`nub nub--host${isActive ? ' nub--active' : ''}${isInactive ? ' nub--inactive' : ''}`}
+                                onClick={isSelectedRow ? () => handleNubClick(absoluteStep) : undefined}
+                                style={isSelectedRow ? { cursor: 'pointer' } : undefined}
+                              />
+                            )
+                          })}
                         </div>
                         <div className="block-body" />
                       </div>

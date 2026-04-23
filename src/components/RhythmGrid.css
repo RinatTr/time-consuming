@@ -15,7 +15,7 @@
 .bar-pair {
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
-  border-radius: 1px;
+  border-radius: var(--border-radius);
   padding: 0;
   flex-shrink: 0;
 }
@@ -110,11 +110,6 @@
 }
 
 .nub {
-  /* flex: 1;
-  min-width: 0;
-  height: 8px;
-  border-radius: 50% 50% 2px 2px;
-  box-shadow: inset -1px -1px 1px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1); */
 width: 32px;
   height: 10px;
   border-radius: 50% 50% 3px 3px;
@@ -153,7 +148,9 @@ width: 32px;
 }
 
 .nub--guest {
+  /* Default styling inherited from .nub base class */
   /* background: linear-gradient(180deg, #fbb75a 0%, var(--guest-color) 100%); */
+  display: block;
 }
 
 /* ── Host blocks (purple/violet) ── */
@@ -177,7 +174,9 @@ width: 32px;
 }
 
 .nub--host {
+  /* Default styling inherited from .nub base class */
   /* background: linear-gradient(180deg, #818cf8 0%, var(--host-color) 100%); */
+  display: block;
 }
 
 /* ── Step ruler ──
@@ -231,3 +230,13 @@ width: 32px;
   opacity: 0.5;
   flex: 1;
 }
+
+/* Nub active state: step is ON for selected instrument */
+.nub--active {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* Nub inactive state: step is OFF for selected instrument */
+/* .nub--inactive {
+  //inherit from .nub
+} */
