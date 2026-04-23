@@ -238,7 +238,5 @@ width: 32px;
 
 /* Nub inactive state: step is OFF for selected instrument */
 /* .nub--inactive {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: none;
-  opacity: 0.4;
+  //inherit from .nub
 } */
