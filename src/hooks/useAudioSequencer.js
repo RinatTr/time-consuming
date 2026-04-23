@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import DrumMachine from '../audio/DrumMachine'
 import { generatePhrase } from '../audio/phraseGenerator'
 import { PARTS_LIBRARY } from '../audio/partsLibrary'
 import { getNoteValue } from '../audio/phraseCalculator'
@@ -7,8 +6,12 @@ import { getNoteValue } from '../audio/phraseCalculator'
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
  * Handles initialization, playback control, BPM updates, bar selection, and parametric phrase generation
+ *
+ * @param {DrumMachine} drumMachine - The DrumMachine instance owned by AudioSequencerProvider.
+ *   Passed as a parameter (not imported) so the provider controls the instance lifecycle,
+ *   preventing HMR hot-reload from orphaning the audio graph. See DrumMachine.js for rationale.
  */
-export function useAudioSequencer() {
+export function useAudioSequencer(drumMachine) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [bpm, setBpm] = useState(100)
@@ -85,19 +88,19 @@ export function useAudioSequencer() {
 
     initializingRef.current = true
     try {
-      await DrumMachine.initialize()
-      setBpm(DrumMachine.getBPM())
+      await drumMachine.initialize()
+      setBpm(drumMachine.getBPM())
       
       // Generate initial phrase with default config
       const config = { barCount, groupingOption, hostMeter, subdivision }
       const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
       
       Object.entries(result.patterns).forEach(([id, pattern]) => {
-        DrumMachine.setGridPattern(id, pattern)
+        drumMachine.setGridPattern(id, pattern)
       })
       setPatterns(result.patterns)
       
-      DrumMachine.setTimeSignature(hostMeter)
+      drumMachine.setTimeSignature(hostMeter)
       setCurrentGroupings(result.groupings)
       setCurrentStepsPerBar(result.stepsPerBar)
       
@@ -120,11 +123,11 @@ export function useAudioSequencer() {
     const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
 
     Object.entries(result.patterns).forEach(([id, pattern]) => {
-      DrumMachine.setGridPattern(id, pattern)
+      drumMachine.setGridPattern(id, pattern)
     })
     setPatterns(result.patterns)
 
-    DrumMachine.setTimeSignature(hostMeter)
+    drumMachine.setTimeSignature(hostMeter)
     setCurrentGroupings(result.groupings)
     setCurrentStepsPerBar(result.stepsPerBar)
   }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment, isPlaying, isInitialized])
@@ -160,7 +163,7 @@ export function useAudioSequencer() {
     }
     const stepCount = barCount * currentStepsPerBar
     const noteValue = getNoteValue(subdivision)
-    DrumMachine.play(stepCount, noteValue)
+    drumMachine.play(stepCount, noteValue)
     setIsPlaying(true)
   }
 
@@ -168,7 +171,7 @@ export function useAudioSequencer() {
    * Stop playback
    */
   const stop = () => {
-    DrumMachine.stop()
+    drumMachine.stop()
     setIsPlaying(false)
     setCurrentStep(0)
     setActiveBarIndex(0)
@@ -179,7 +182,7 @@ export function useAudioSequencer() {
    */
   const updateBPM = (newBpm) => {
     // BPM Clamped between 0 and 260 in UI
-    DrumMachine.setBPM(newBpm)
+    drumMachine.setBPM(newBpm)
     setBpm(newBpm)
   }
 
@@ -187,33 +190,33 @@ export function useAudioSequencer() {
    * Set grid cell active/inactive
    */
   const setGridCell = useCallback((instrumentName, step, isActive) => {
-    DrumMachine.setGridCell(instrumentName, step, isActive)
+    drumMachine.setGridCell(instrumentName, step, isActive)
     setPatterns(prev => {
       const updated = [...prev[instrumentName]]
       updated[step] = isActive
       return { ...prev, [instrumentName]: updated }
     })
-  }, [])
+  }, [drumMachine])
 
   /**
    * Get grid cell state
    */
   const getGridCell = (instrumentName, step) => {
-    return DrumMachine.getGridCell(instrumentName, step)
+    return drumMachine.getGridCell(instrumentName, step)
   }
 
   /**
    * Set entire pattern for an instrument
    */
   const setPattern = (instrumentName, pattern) => {
-    DrumMachine.setGridPattern(instrumentName, pattern)
+    drumMachine.setGridPattern(instrumentName, pattern)
   }
 
   /**
    * Get entire pattern for an instrument
    */
   const getPattern = (instrumentName) => {
-    return DrumMachine.getGridPattern(instrumentName)
+    return drumMachine.getGridPattern(instrumentName)
   }
 
   /**
@@ -283,19 +286,15 @@ export function useAudioSequencer() {
 
   // Subscribe to step changes for playhead tracking and auto-follow during playback
   useEffect(() => {
-    DrumMachine.onStepChange(handleStepChange)
+    drumMachine.onStepChange(handleStepChange)
 
     return () => {
-      DrumMachine.offStepChange(handleStepChange)
+      drumMachine.offStepChange(handleStepChange)
     }
-  }, [handleStepChange])
+  }, [drumMachine, handleStepChange])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Optionally: DrumMachine.dispose()
-    }
-  }, [])
+  // Note: DrumMachine disposal is handled by AudioSequencerProvider's useEffect cleanup,
+  // not here — the hook does not own the instance lifetime.
 
   return {
     // State
@@ -336,7 +335,7 @@ export function useAudioSequencer() {
     getPattern,
     selectInstrument,
 
-    // Direct access to drum machine (if needed)
-    drumMachine: DrumMachine,
+    // Direct access to drum machine instance (if needed by consumers)
+    drumMachine,
   }
 }

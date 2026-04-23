@@ -42,8 +42,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [true, false, false, false, false, false, false, false, true,  false, false, true],
       },
       '5/4': {
-        '16th':        [],   // no authored pattern yet
-        '8th-triplet': [],   // no authored pattern yet
+        '16th':        [true,false,false,true,false,false,true,true,false,false,false,false,false,false,true,false,false,true,false,false],
+        '8th-triplet': [true,false,false,false,false,true,false,false,false,false,false,true,false,false,false],
       },
       '6/8': {
         '16th':        [true, false, false, false, false, true,  false, false, false, true,  false, true],
@@ -67,8 +67,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [false, false, false, true,  false, false, false, false, false, true,  false, false],
       },
       '5/4': {
-        '16th':        [],
-        '8th-triplet': [],
+        '16th':        [false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false,false,false,true,false],
+        '8th-triplet': [false,false,false,false,false,false,true,false,false,false,false,false,false,false,true],
       },
       '6/8': {
         '16th':        [false, false, false, false, false, false, true,  false, false, false, false, false],
@@ -91,8 +91,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [true,  false, true,  true,  false, true,  true,  false, true,  true,  false, true],
       },
       '5/4': {
-        '16th':        [],
-        '8th-triplet': [],
+        '16th':        [true,false,false,false,true,false,false,false,true,false,true,true,true,false,false,false,true,false,false,false],
+        '8th-triplet': [true,false,true,true,false,false,true,false,false,true,false,true,true,false,false],
       },
       '6/8': {
         '16th':        [true,  false, true,  true,  true,  true,  true,  false, true,  true,  true,  true],
@@ -115,8 +115,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [true,  false, false, false, false, false, false, false, true,  false, false, true],
       },
       '5/4': {
-        '16th':        [],
-        '8th-triplet': [],
+        '16th':        [true,false,false,true,false,false,true,true,false,false,false,false,false,false,true,false,false,true,false,false],
+        '8th-triplet': [true,false,false,false,false,false,false,false,false,false,false,true,false,false,true],
       },
       '6/8': {
         '16th':        [true,  false, false, false, false, false, false, false, false, true,  false, true],
@@ -139,8 +139,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [true,  false, false, true,  false, false, true,  false, false, true,  false, true],
       },
       '5/4': {
-        '16th':        [],
-        '8th-triplet': [],
+        '16th':        [true,false,false,false,false,false,true,false,false,false,true,false,true,false,false,false,true,false,false,false],
+        '8th-triplet': [true,false,false,false,false,true,false,false,false,false,false,true,false,false,false],
       },
       '6/8': {
         '16th':        [true,  false, false, false, false, false, true,  false, false, true,  false, false],
@@ -163,8 +163,8 @@ export const PARTS_LIBRARY = {
         '8th-triplet': [true,  false, true,  false, false, false, true,  false, true,  false, false, false],
       },
       '5/4': {
-        '16th':        [],
-        '8th-triplet': [],
+        '16th':        [true,false,true,false,false,false,true,false,false,false,true,false,false,false,false,false,true,false,false,false],
+        '8th-triplet': [true,false,true,false,false,true,true,false,true,false,false,true,false,false,false],
       },
       '6/8': {
         '16th':        [true,  false, false, false, false, false, true,  false, false, true,  false, false],
