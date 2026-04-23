@@ -17,8 +17,8 @@
   flex-shrink: 0;
 }
 
-/* ── BPM control ── */
-.bpm-control {
+/* ── Transport control (BPM, Bar Count) ── */
+.transport-control {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -30,7 +30,7 @@
   min-width: 120px;
 }
 
-.bpm-label {
+.transport-label {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
@@ -38,7 +38,7 @@
   letter-spacing: 0.05em;
 }
 
-.bpm-value {
+.transport-value {
   font-family: var(--font-mono);
   font-size: 14px;
   color: var(--text-primary);
@@ -53,15 +53,15 @@
   transition: color 0.12s;
 }
 
-.bpm-value:focus {
+.transport-value:focus {
   color: var(--accent);
 }
 
-.bpm-value::selection {
+.transport-value::selection {
   background: rgba(56, 189, 248, 0.3);
 }
 
-.bpm-arrows {
+.transport-arrows {
   display: flex;
   flex-direction: column;
   gap: 1px;

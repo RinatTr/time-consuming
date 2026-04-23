@@ -190,18 +190,18 @@ export default function TransportBar() {
 
       {/* Transport Controls */}
       <div className="transport-bar">
-        <div className="bpm-control">
-          <span className="bpm-label">BPM:</span>
+        <div className="transport-control">
+          <span className="transport-label">BPM:</span>
           <input
             type="text"
-            className="bpm-value"
+            className="transport-value"
             value={bpm}
             onChange={handleBpmInputChange}
             onBlur={handleBpmInputBlur}
             inputMode="numeric"
             maxLength="3"
           />
-          <div className="bpm-arrows">
+          <div className="transport-arrows">
             <button
               className="arrow-btn"
               onClick={handleBpmIncrease}
