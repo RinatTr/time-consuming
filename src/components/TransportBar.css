@@ -162,7 +162,6 @@
   background: var(--bg-cell);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .transport-btn svg {
@@ -179,20 +178,20 @@
 .transport-btn--play:hover {
   border-color: #4ade80;
   color: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.25);
 }
 
 .transport-btn--stop:hover {
   border-color: rgba(56, 189, 248);
   color: rgba(56, 189, 248);
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
 }
 
+.arrow-btn:disabled, 
 .transport-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
+.arrow-btn:disabled,
 .transport-btn:disabled:hover {
   background: var(--bg-cell);
   border-color: var(--border-dim);
