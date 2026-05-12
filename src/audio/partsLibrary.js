@@ -20,8 +20,8 @@
  *   hostMeter × subdivision:
  *     4/4  × 16th         → 16 steps/bar
  *     4/4  × 8th-triplet  → 12 steps/bar
- *     5/4  × 16th         → 20 steps/bar  [placeholder — no authored parts yet]
- *     5/4  × 8th-triplet  → 15 steps/bar  [placeholder — no authored parts yet]
+ *     5/4  × 16th         → 20 steps/bar  
+ *     5/4  × 8th-triplet  → 15 steps/bar  
  *     6/8  × 16th         → 12 steps/bar
  *     6/8  × 8th-triplet  → DISABLED (UI prevents this selection)
  *

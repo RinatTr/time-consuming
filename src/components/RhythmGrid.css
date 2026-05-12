@@ -179,37 +179,6 @@ width: 32px;
   display: block;
 }
 
-/* ── Step ruler ──
-.step-ruler {
-  display: grid;
-  grid-template-columns: repeat(var(--steps-per-bar, 16), 1fr);
-  height: 24px;
-  background: var(--bg-panel);
-  border-top: 1px solid var(--border-subtle);
-  align-items: center;
-  position: relative;
-  z-index: 1;
-  gap: 4px;
-  padding: 0 4px;
-} */
-
-.step-num {
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 0;
-  transition: color 0.15s;
-}
-
-.step-num--active {
-  color: var(--accent);
-  font-weight: 700;
-  background: var(--accent-dim);
-  border-radius: 2px;
-  padding: 1px 0;
-}
-
 /* ── Playhead line ── */
 .playhead-line {
   position: absolute;
