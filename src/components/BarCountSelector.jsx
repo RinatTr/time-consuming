@@ -8,9 +8,8 @@ import './BarCountSelector.css'
  */
 export function BarCountSelector({ barCount, isLocked, handlebarCountDecrease, handlebarCountIncrease }) {
   // const options = [1, 2, 3, 4]
-
   return (
-    <div className="transport-control">
+    <div className="transport-control" >
           <span className="transport-label">Bars:</span>
           <span className="transport-value">{barCount}</span>
           <div className="transport-arrows">

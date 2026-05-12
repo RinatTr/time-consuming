@@ -28,6 +28,11 @@ class DrumMachine {
       keysChorus: null,
       hihatHPF: null,
       guitarDistortion: null,
+      // Fail-safe output chain (skill: Phase 7 — Minimum Safe Chain Topology)
+      // All synths route through masterLimiter → masterMeter → Destination
+      // Prevents digital clipping when multiple instruments fire simultaneously
+      masterLimiter: null,
+      masterMeter: null,
     }
 
     this.sequence = null
@@ -54,6 +59,26 @@ class DrumMachine {
       Tone.getTransport().bpm.value = 100
       Tone.getTransport().timeSignature = [4, 4]
       this.createSynths()
+
+      // Monitor AudioContext state transitions (Phase 3 — Lifecycle / Fail-Safety).
+      // 'suspended': browser autoplay policy or tab backgrounded.
+      // 'interrupted': OS-level interruption (phone call, system alert) — Chrome 2024+.
+      // Store the handler ref so dispose() can remove it and prevent listener leaks
+      // if initialize() is called again after dispose().
+      const rawCtx = Tone.getContext().rawContext
+      this._stateChangeHandler = () => {
+        if (rawCtx.state === 'interrupted' || rawCtx.state === 'suspended') {
+          if (this.isPlaying) {
+            Tone.getTransport().pause()
+            // NOTE: do not set this.isPlaying = false here — the context may
+            // resume automatically (e.g. tab re-focus). The caller should listen
+            // for this event and update UI accordingly, then call play() again.
+          }
+        }
+      }
+      rawCtx.addEventListener('statechange', this._stateChangeHandler)
+
+      this._rawCtx = rawCtx
       this.isInitialized = true
       if (process.env.NODE_ENV === 'development') {
         console.log('DrumMachine initialized')
@@ -66,8 +91,36 @@ class DrumMachine {
 
   /**
    * Create all synthesizers and routing nodes.
+   *
+   * Output chain (skill: Phase 7 — Fail-Safe Chain Architecture):
+   *   All synths → masterLimiter (-2 dBFS) → masterMeter → Destination
+   *
+   * Prevents digital clipping when multiple instruments fire on the same step,
+   * which is the root cause of the distortion. A hard limiter at -2 dBFS gives
+   * 2 dB of headroom while being inaudible under normal mixed loads.
    */
   createSynths() {
+    // --- Master output chain (built first so synths can .connect() into it) ---
+    this.nodes.masterLimiter = new Tone.Limiter(-2).toDestination()
+    // Meter passively taps the limiter for signal-health diagnostics (dBFS)
+    this.nodes.masterMeter = new Tone.Meter({ normalRange: false })
+    this.nodes.masterLimiter.connect(this.nodes.masterMeter)
+
+    // Signal health monitor (Phase 7 — Fail-Safe Chain Architecture).
+    // Runs on the main thread every 2s — well outside the audio render budget.
+    // Catches NaN/Inf (feedback loop, uninitialized buffer) and near-clip conditions
+    // that the limiter handles but should still be visible during development.
+    this._healthMonitorId = setInterval(() => {
+      const level = this.nodes.masterMeter?.getValue()
+      if (level === undefined || level === null) return
+      const db = typeof level === 'number' ? level : Math.max(...level)
+      if (!isFinite(db) || isNaN(db)) {
+        console.error('[DrumMachine] NaN/Inf signal — possible feedback or uninitialized buffer')
+      } else if (db > -2) {
+        console.warn(`[DrumMachine] Output near limiter ceiling: ${db.toFixed(1)} dBFS`)
+      }
+    }, 2000)
+
     // --- Kick ---
     this.synths.kick = new Tone.MembraneSynth({
       pitchDecay: 0.08,
@@ -79,7 +132,8 @@ class DrumMachine {
         sustain: 0,
         release: 0.1,
       },
-    }).toDestination()
+      volume: -8,
+    }).connect(this.nodes.masterLimiter)
 
     // --- Snare ---
     // HPF stored on this.nodes so it gets properly disposed
@@ -87,7 +141,7 @@ class DrumMachine {
       frequency: 1800,
       type: 'highpass',
       rolloff: -12,
-    }).toDestination()
+    }).connect(this.nodes.masterLimiter)
 
     // White noise layer — snare wire rattle
     this.synths.snare = new Tone.NoiseSynth({
@@ -111,14 +165,14 @@ class DrumMachine {
         release: 0.01,
       },
       volume: -14,
-    }).toDestination()
+    }).connect(this.nodes.masterLimiter)
 
-    // --- Hi-Hat --- 
+    // --- Hi-Hat ---
     // HPF stored on this.nodes so it gets properly disposed
     this.nodes.hihatHPF = new Tone.Filter({
       frequency: 8000,
       type: 'highpass',
-    }).toDestination()
+    }).connect(this.nodes.masterLimiter)
 
     this.synths.hihat = new Tone.NoiseSynth({
         noise: { type: 'white' },
@@ -132,7 +186,14 @@ class DrumMachine {
         }).connect(this.nodes.hihatHPF)
 
     // --- Bass ---
+    // volume: -12 matches the instrument's relative weight in the mix.
+    // Without this, the triangle oscillator hits the limiter at near-0 dBFS,
+    // causing limiter pumping that sounds like distortion on bass-heavy patterns.
+    // maxPolyphony: 4 caps voice count — bass notes overlap at fast tempos
+    // (sustain + release = 0.75s) and unbounded polyphony causes them to sum
+    // into the limiter on every step, compounding the loudness problem.
     this.synths.bass = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: 4,
       oscillator: { type: 'triangle' },
       envelope: {
         attack: 0.01,
@@ -140,7 +201,8 @@ class DrumMachine {
         sustain: 0.5,
         release: 0.5,
       },
-    }).toDestination()
+      volume: -10,
+    }).connect(this.nodes.masterLimiter)
 
     // --- Keys (EP) ---
     // Slow chorus for classic Rhodes shimmer — stored in this.nodes for disposal
@@ -150,11 +212,12 @@ class DrumMachine {
       depth: 0.4,
       wet: 0.4,
       // the start method is needed to trigger the LFO in Tone.Chorus
-    }).toDestination().start()
+    }).connect(this.nodes.masterLimiter).start()
 
     // fatsine layering 3 detuned sines — mimics the soft tine character of a Rhodes
-    
+    // maxPolyphony: 8 — keys chord is 4 notes; 8 allows one overlap before voice stealing
     this.synths.keys = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: 4,
       oscillator: {
         type: 'fatsine',
         count: 3,   // 3 slightly detuned sine voices layered
@@ -171,12 +234,14 @@ class DrumMachine {
     }).connect(this.nodes.keysChorus)
     
       // --- Guitar ---
-    this.nodes.guitarDistortion = new Tone.Distortion(0.14).toDestination();
+    this.nodes.guitarDistortion = new Tone.Distortion(0.14).connect(this.nodes.masterLimiter)
 
+    // maxPolyphony: 4 — guitar is 2-note dyad; 4 allows one overlap before voice stealing
     this.synths.guitar = new Tone.PolySynth(Tone.Synth, {
+      maxPolyphony: 2,
       oscillator: {
         type: 'fatsine',
-        count: 3,   // layered voices to add richness
+        count: 2,   // layered voices to add richness
         spread: 15,
       },
       envelope: {
@@ -200,24 +265,31 @@ class DrumMachine {
 
     switch (instrumentName) {
       case 'kick':
-        this.synths.kick.triggerAttackRelease('C1', '0.5', time)
+        // 0.5s absolute — MembraneSynth ignores sustain so duration = decay runway
+        this.synths.kick.triggerAttackRelease('C1', 0.5, time)
         break
       case 'snare':
-        // Both layers triggered at the same scheduled time
+        // Both layers triggered at the same scheduled time.
+        // '16n' / '32n' are intentionally note-relative — snare transients
+        // are <50ms at any musical tempo so tempo-scaling is inaudible here.
         this.synths.snare.triggerAttackRelease('16n', time)
         this.synths.snareBody.triggerAttackRelease(['D2', 'E3'], '32n', time)
         break
-      case 'hihat': 
+      case 'hihat':
         this.synths.hihat.triggerAttackRelease('16n', time)
         break
       case 'bass':
-        this.synths.bass.triggerAttackRelease('C2', '0.25', time)
+        this.synths.bass.triggerAttackRelease('C2', 0.25, time)
         break
       case 'keys':
-        this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], '8n', time)
+        // Fixed absolute duration (seconds) — not a note value like '8n'.
+        // Note values scale with BPM: at 60 BPM '8n' = 500ms; at 180 BPM = 167ms.
+        // Using seconds keeps the EP bloom and ring-out consistent at all tempi.
+        this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], 0.35, time)
         break
       case 'guitar':
-        this.synths.guitar.triggerAttackRelease(['G4', 'G5'], '8n', time)
+        // Same rationale: fixed seconds for a consistent pluck shape at any BPM.
+        this.synths.guitar.triggerAttackRelease(['G4', 'G5'], 0.18, time)
         break
       default:
         console.warn(`Instrument not found: ${instrumentName}`)
@@ -291,7 +363,9 @@ class DrumMachine {
 
     if (!this.isPlaying) {
       this.startSequence(stepCount, noteValue)
-      Tone.getTransport().start()
+      // Start 100ms in the future — avoids scheduling race at t=0
+      // (Tone.js wiki: values under 100ms are not perceptible)
+      Tone.getTransport().start('+0.1')
       this.isPlaying = true
       if (process.env.NODE_ENV === 'development') {
         console.log('Playback started')
@@ -367,12 +441,28 @@ class DrumMachine {
 
   /**
    * Dispose and clean up all synths and routing nodes.
+   * Safe to call multiple times. After dispose(), initialize() can be called
+   * again to rebuild the graph from scratch.
    */
   dispose() {
     if (this.isPlaying) this.stop()
-    if (this.sequence) this.sequence.dispose()
+    clearInterval(this._healthMonitorId)
+    if (this._rawCtx && this._stateChangeHandler) {
+      this._rawCtx.removeEventListener('statechange', this._stateChangeHandler)
+      this._rawCtx = null
+      this._stateChangeHandler = null
+    }
+    if (this.sequence) {
+      this.sequence.dispose()
+      this.sequence = null
+    }
     Object.values(this.synths).forEach((synth) => synth?.dispose())
     Object.values(this.nodes).forEach((node) => node?.dispose())
+    // Reset refs so disposed nodes are not double-disposed on a second call
+    Object.keys(this.synths).forEach((k) => (this.synths[k] = null))
+    Object.keys(this.nodes).forEach((k) => (this.nodes[k] = null))
+    // Allow re-initialization (e.g. after a hot reload or session reset)
+    this.isInitialized = false
   }
 
   /**
@@ -403,4 +493,27 @@ class DrumMachine {
   }
 }
 
-export default new DrumMachine()
+// Export the class, not a pre-constructed instance.
+//
+// WHY: `export default new DrumMachine()` creates the instance at module evaluation
+// time and ties its lifetime to the module's scope. In React dev mode, Vite/webpack
+// HMR re-evaluates modules on every hot reload — but Tone.js's AudioContext and
+// internal graph survive in the browser's audio thread. The result is that the new
+// JS instance loses its references to the still-running audio nodes, orphaning them
+// in the graph while the new instance builds a second set on top. This causes
+// doubled voices, accumulated polyphony, and growing render-budget pressure that
+// manifests as distortion and audio glitches that worsen over a dev session.
+//
+// Instead, construct and own the instance inside AudioSequencerProvider (or an
+// equivalent React context / singleton hook) using a ref + useEffect cleanup:
+//
+//   const drumMachine = useRef(null)
+//   useEffect(() => {
+//     drumMachine.current = new DrumMachine()
+//     return () => drumMachine.current?.dispose()
+//   }, [])
+//
+// This ties the instance lifecycle to the React tree, not the module scope,
+// so HMR and StrictMode double-invocation both clean up correctly.
+export { DrumMachine }
+export default DrumMachine

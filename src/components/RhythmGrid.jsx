@@ -95,7 +95,6 @@ function RhythmGridComponent() {
                               const absoluteStep = barIndex * currentStepsPerBar + blockOffset + si
                               const isActive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === true
                               const isInactive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === false
-                              
                               return (
                                 <div
                                   key={si}
@@ -159,19 +158,6 @@ function RhythmGridComponent() {
                   })}
                 </div>
               </div>
-
-              {/* Step ruler
-              <div className="step-ruler">
-                {Array.from({ length: currentStepsPerBar }).map((_, stepIdx) => (
-                  <div
-                    key={stepIdx}
-                    className={`step-num ${stepIdx === 0 ? 'step-num--active' : ''}`}
-                  >
-                    {stepIdx + 1}
-                  </div>
-                ))}
-              </div> */}
-
               {/* Playhead — only rendered inside active bar-pair */}
               {isActiveBar && (
                 <div
