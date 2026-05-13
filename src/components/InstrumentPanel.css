@@ -42,9 +42,6 @@
   cursor: grabbing;
 }
 
-.instrument-row.active {
-  background: rgba(56, 189, 248, 0.08);
-}
 
 .instrument-icon {
   width: 64px;
@@ -63,7 +60,7 @@
   opacity: 0.85;
 }
 
-.instrument-row.active .instrument-icon {
+.instrument-icon.active {
   animation: preview-pulse 0.2s ease-out;
 }
 
