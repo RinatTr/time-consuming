@@ -24,15 +24,10 @@ export default function InstrumentPanel() {
 
   const handleIconClick = async (instrumentId) => {
     try {
-      // Ensure audio is initialized (lazy init on first interaction)
       if (!drumMachine.isInitialized) {
         await drumMachine.initialize()
       }
-
-      // Trigger the sound preview
       drumMachine.triggerInstrument(instrumentId)
-
-      // Visual feedback: highlight the clicked instrument briefly
       setActiveInstrument(instrumentId)
       setTimeout(() => setActiveInstrument(null), 200)
     } catch (error) {
@@ -57,12 +52,12 @@ export default function InstrumentPanel() {
           return (
             <li
               key={id}
-              className={`instrument-row ${activeInstrument === id ? 'active' : ''} role--${role}${isSelected ? ' instrument-row--selected' : ''}`}
+              className={`instrument-row role--${role}${isSelected ? ' instrument-row--selected' : ''}`}
               onClick={() => selectInstrument(id)}
               title={`Click to select ${label}`}
             >
               <img
-                className="instrument-icon"
+                className={`instrument-icon${activeInstrument === id ? ' active' : ''}`}
                 src={img}
                 alt={label}
                 onClick={(e) => {
