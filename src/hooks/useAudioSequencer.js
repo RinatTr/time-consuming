@@ -65,6 +65,7 @@ export function useAudioSequencer(drumMachine) {
     
     setCurrentGroupings(result.groupings)
     setCurrentStepsPerBar(result.stepsPerBar)
+    setPatterns(result.patterns)
   } 
 
   // Groupings and steps tracking and defaults for grid module rendering
