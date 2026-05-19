@@ -12,7 +12,7 @@ export default function App() {
       <div className="app">
         <RotationPrompt />
         <header className="app-header">
-          <h1 className="app-title">playground</h1>
+          <h1 className="app-title">PLAYGROUND</h1>
         </header>
         <div className="app-body">
           <InstrumentPanel />

@@ -73,6 +73,7 @@
   letter-spacing: 0.04em;
   color: var(--text-primary);
   flex: 1;
+  padding-left: inherit;
 }
 
 /* ── Role Toggle Button ── */
@@ -163,6 +164,9 @@
   .role-toggle {
     /* don't display inner text but keep the button visible */
     text-indent: -9999px;
+    /* add smooth dark shadow inwardly */
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+    margin-left: auto;
   }
 
   .role-toggle.role-toggle--host {
@@ -173,4 +177,5 @@
   .role-toggle.role-toggle--guest {
     background-color: var(--color-guest, #fb923c);
     border-color: var(--color-guest, #fb923c);
+  }
 }

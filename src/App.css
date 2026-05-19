@@ -21,7 +21,7 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.18em;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .app-body {
