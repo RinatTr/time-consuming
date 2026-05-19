@@ -1,67 +1,128 @@
-.transport-wrapper {
+.transport-bar {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 64px;
+  padding: 0 16px;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  gap: 8px;
 }
 
-.transport-bar {
+.transport-cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.transport-cluster--left {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.transport-cluster--right {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px;
-  height: 52px;
-  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
-/* ── Transport control (BPM, Bar Count) ── */
-.transport-control {
+/* Selector groups */
+.selector-group {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--bg-cell);
-  border: 1px solid var(--border-dim);
-  border-radius: var(--border-radius);
-  padding: 0 10px;
-  height: 34px;
-  min-width: 120px;
+  gap: 6px;
 }
 
-.transport-label {
+.selector-label {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.transport-value {
+.button-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-cell);
+  border-radius: var(--border-radius);
+  padding: 2px;
+}
+
+.selector-btn {
+  padding: 3px 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.selector-btn:hover:not(:disabled) {
+  background: var(--text-primary);
+  color: var(--bg-cell-hover)
+}
+
+.selector-btn.selected {
+  background: var(--text-primary);
+  color: var(--bg-cell-hover);
+  font-weight: 600;
+  outline: 1px solid var(--border-subtle);
+}
+
+.selector-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* BPM control */
+.bpm-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-cell);
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+  padding: 0 8px;
+  height: 30px;
+}
+
+.bpm-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bpm-value {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-primary);
-  min-width: 28px;
+  width: 36px;
   background: transparent;
   border: none;
   outline: none;
   text-align: center;
-  flex: 0 0 auto;
-  width: 45px;
-  padding: 0 4px;
-  transition: color 0.12s;
+  padding: 0;
 }
 
-.transport-value:focus {
-  color: var(--accent);
-}
+.bpm-value:focus { color: var(--accent); }
 
-.transport-value::selection {
-  background: rgba(56, 189, 248, 0.3);
-}
-
-.transport-arrows {
+.bpm-arrows {
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -71,108 +132,37 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
-  padding: 1px 3px;
-  border-radius: var(--border-radius);
-  transition: color 0.12s, background 0.12s;
+  padding: 1px 2px;
+  border-radius: 1px;
+  transition: color 0.12s;
 }
 
-.arrow-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-cell-hover);
-}
+.arrow-btn:hover { color: var(--text-primary); }
 
-/* ── Config Selectors ── */
-.config-selectors {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 0 16px;
-  height: 40px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-}
-
-.selector-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.selector-label {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  min-width: 75px;
-}
-
-.button-group {
-  display: flex;
-  gap: 4px;
-  background: var(--bg-cell);
-  border: 1px solid var(--border-dim);
-  border-radius: var(--border-radius);
-  padding: 2px;
-}
-
-.selector-btn {
-  padding: 4px 12px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--border-radius);
-  transition: background 0.12s, color 0.12s;
-}
-
-.selector-btn:hover:not(:disabled) {
-  background: var(--bg-cell-hover);
-  color: var(--text-primary);
-}
-
-.selector-btn.selected {
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-weight: 600;
-}
-
-.selector-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── Transport buttons ── */
+/* Transport buttons */
 .transport-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--border-radius);
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
   border: 1px solid var(--border-dim);
   background: var(--bg-cell);
   color: var(--text-secondary);
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.transport-btn svg {
-  width: 14px;
-  height: 14px;
-}
+.transport-btn svg { width: 12px; height: 12px; }
 
 .transport-btn:hover {
   background: var(--bg-cell-hover);
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .transport-btn--play:hover {
@@ -181,20 +171,20 @@
 }
 
 .transport-btn--stop:hover {
-  border-color: rgba(56, 189, 248);
-  color: rgba(56, 189, 248);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-.arrow-btn:disabled, 
 .transport-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-.arrow-btn:disabled,
 .transport-btn:disabled:hover {
   background: var(--bg-cell);
   border-color: var(--border-dim);
   color: var(--text-secondary);
-  box-shadow: none;
 }
+
+/* BPM bars label reuse */
+.bpm-control .bpm-label + .bpm-value { margin-left: 2px; }

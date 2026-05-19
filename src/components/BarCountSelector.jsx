@@ -7,12 +7,12 @@ import './BarCountSelector.css'
  * Disabled after first play (barCount is locked)
  */
 export function BarCountSelector({ barCount, isLocked, handlebarCountDecrease, handlebarCountIncrease }) {
-  // const options = [1, 2, 3, 4]
+  // the bpm css classes are reused and hacky, will refactor to separate.
   return (
-    <div className="transport-control" >
-          <span className="transport-label">Bars:</span>
-          <span className="transport-value">{barCount}</span>
-          <div className="transport-arrows">
+    <div className="bpm-control" >
+          <span className="bpm-label">Bars:</span>
+          <span className="bpm-value">{barCount}</span>
+          <div className="bpm-arrows">
             <button
               disabled={isLocked}
               className="arrow-btn"
@@ -32,24 +32,6 @@ export function BarCountSelector({ barCount, isLocked, handlebarCountDecrease, h
           </div>
         </div>
   )
-  // return (
-  //   <div className="bar-count-selector">
-  //     <label className="bar-count-label">Bars:</label>
-  //     <div className="bar-count-buttons">
-  //       {options.map((option) => (
-  //         <button
-  //           key={option}
-  //           className={`bar-count-btn ${barCount === option ? 'active' : ''}`}
-  //           onClick={() => onSelectBarCount(option)}
-  //           disabled={isLocked}
-  //           title={isLocked ? 'Bar count locked during playback' : `Select ${option} bar(s)`}
-  //         >
-  //           {option}
-  //         </button>
-  //       ))}
-  //     </div>
-  //   </div>
-  // )
 }
 
 export default BarCountSelector

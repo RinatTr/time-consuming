@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 
+/**DEPRECATED EFFECT SINCE RESPONSIVE DESIGN INTRODUCED **/
 /**
  * usePlayheadTracking - Custom hook for smooth scrolling the current step into view
  * Only scrolls when the playhead is visible in the current bar.

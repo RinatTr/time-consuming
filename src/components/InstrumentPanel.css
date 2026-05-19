@@ -26,6 +26,7 @@
 }
 
 .instrument-row {
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -66,11 +67,13 @@
 
 .instrument-label {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 11px;
+  text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-primary);
   flex: 1;
+  padding-left: inherit;
 }
 
 /* ── Role Toggle Button ── */
@@ -140,4 +143,39 @@
 
 .instrument-row--selected .instrument-label {
   color: var(--accent);
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .instrument-panel {
+    width: 140px;
+    min-width: 140px;
+  }
+
+  .instrument-row {
+    height: 58px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .instrument-label {
+    display: none;
+  }
+
+  .role-toggle {
+    /* don't display inner text but keep the button visible */
+    text-indent: -9999px;
+    /* add smooth dark shadow inwardly */
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+    margin-left: auto;
+  }
+
+  .role-toggle.role-toggle--host {
+    background-color: var(--color-host, #a78bfa);
+    border-color: var(--color-host, #a78bfa);
+  }
+
+  .role-toggle.role-toggle--guest {
+    background-color: var(--color-guest, #fb923c);
+    border-color: var(--color-guest, #fb923c);
+  }
 }
