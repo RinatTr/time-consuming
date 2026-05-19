@@ -141,3 +141,25 @@
 .instrument-row--selected .instrument-label {
   color: var(--accent);
 }
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .instrument-panel {
+    width: 140px;
+    min-width: 140px;
+  }
+
+  .instrument-row {
+    height: 58px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .instrument-label {
+    display: none;
+  }
+
+  .role-toggle {
+    /* don't display inner text but keep the button visible */
+    text-indent: -9999px;
+  }
+}

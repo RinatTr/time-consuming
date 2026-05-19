@@ -125,130 +125,109 @@ export default function TransportBar() {
   )
 
   return (
-    <div className="transport-wrapper">
-      {/* Config Selectors */}
-      <div className="config-selectors">
-        {/* Grouping Option Selector */}
-        <div className="selector-group">
-          <span className="selector-label">Guest:</span>
-          <div className="button-group">
-            {[3, 4, 5].map((opt) => (
-              <button
-                key={opt}
-                className={`selector-btn ${groupingOption === opt ? 'selected' : ''}`}
-                onClick={() => handleSelectGrouping(opt)}
-                disabled={isPlaying}
-                aria-label={`Host Beat ${opt}`}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
+  <div className="transport-bar">
+    {/* Left cluster: config selectors */}
+    <div className="transport-cluster transport-cluster--left">
 
-        {/* Host Meter Selector */}
-        <div className="selector-group">
-          <span className="selector-label">Host:</span>
-          <div className="button-group">
-            {['4/4', '5/4', '6/8'].map((meter) => (
-              <button
-                key={meter}
-                className={`selector-btn ${hostMeter === meter ? 'selected' : ''}`}
-                onClick={() => handleSelectMeter(meter)}
-                disabled={isPlaying}
-                aria-label={`${meter} meter`}
-              >
-                {meter}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Subdivision Selector */}
-        <div className="selector-group">
-          <span className="selector-label">Subdivision:</span>
-          <div className="button-group">
+      <div className="selector-group">
+        <span className="selector-label">Guest:</span>
+        <div className="button-group">
+          {[3, 4, 5].map((opt) => (
             <button
-              className={`selector-btn ${subdivision === '16th' ? 'selected' : ''}`}
-              onClick={() => handleSelectSubdivision('16th')}
+              key={opt}
+              className={`selector-btn ${groupingOption === opt ? 'selected' : ''}`}
+              onClick={() => handleSelectGrouping(opt)}
               disabled={isPlaying}
-              aria-label="16th note subdivision"
-            >
-              16th
-            </button>
-            <button
-              className={`selector-btn ${subdivision === '8th-triplet' ? 'selected' : ''}`}
-              onClick={() => handleSelectSubdivision('8th-triplet')}
-              disabled={isPlaying || hostMeter === '6/8'} // Disable triplets if 6/8 is selected
-              aria-label="8th triplet subdivision"
-            >
-              8th Triplet
-            </button>
-          </div>
+              aria-label={`Guest grouping ${opt}`}
+            >{opt}</button>
+          ))}
         </div>
       </div>
 
-      {/* Transport Controls */}
-      <div className="transport-bar">
-        <div className="transport-control">
-          <span className="transport-label">BPM:</span>
-          <input
-            type="text"
-            className="transport-value"
-            value={bpm}
-            onChange={handleBpmInputChange}
-            onBlur={handleBpmInputBlur}
-            inputMode="numeric"
-            maxLength="3"
-          />
-          <div className="transport-arrows">
+      <div className="selector-group">
+        <span className="selector-label">Host:</span>
+        <div className="button-group">
+          {['4/4', '5/4', '6/8'].map((meter) => (
             <button
-              className="arrow-btn"
-              onClick={handleBpmIncrease}
-              aria-label="Increase BPM"
-            >
-              ▲
-            </button>
-            <button
-              className="arrow-btn"
-              onClick={handleBpmDecrease}
-              aria-label="Decrease BPM"
-            >
-              ▼
-            </button>
-          </div>
+              key={meter}
+              className={`selector-btn ${hostMeter === meter ? 'selected' : ''}`}
+              onClick={() => handleSelectMeter(meter)}
+              disabled={isPlaying}
+              aria-label={`${meter} meter`}
+            >{meter}</button>
+          ))}
         </div>
+      </div>
 
-        <button
-          className="transport-btn transport-btn--stop"
-          onClick={handleStopClick}
-          disabled={!isPlaying}
-          aria-label="Stop"
-        >
-          <svg viewBox="0 0 16 16" fill="currentColor">
-            <rect x="2" y="2" width="12" height="12" rx="1" />
-          </svg>
-        </button>
-
-        <button
-          className="transport-btn transport-btn--play"
-          onClick={handlePlayClick}
-          disabled={isPlaying}
-          aria-label="Play"
-        >
-          <svg viewBox="0 0 16 16" fill="currentColor">
-            <path d="M4 2.5l10 5.5-10 5.5V2.5z" />
-          </svg>
-        </button>
-        {/* Bar Count Selector */}
-        <BarCountSelector
-          barCount={barCount}
-          onSelectBarCount={handleSelectBarCount}
-          isLocked={isPlaying}
-          handlebarCountDecrease={handleBarCountDecrease}
-          handlebarCountIncrease={handleBarCountIncrease}
-        />
+      <div className="selector-group">
+        <span className="selector-label">Subdivision:</span>
+        <div className="button-group">
+          <button
+            className={`selector-btn ${subdivision === '16th' ? 'selected' : ''}`}
+            onClick={() => handleSelectSubdivision('16th')}
+            disabled={isPlaying}
+            aria-label="16th note subdivision"
+          >16th</button>
+          <button
+            className={`selector-btn ${subdivision === '8th-triplet' ? 'selected' : ''}`}
+            onClick={() => handleSelectSubdivision('8th-triplet')}
+            disabled={isPlaying || hostMeter === '6/8'}
+            aria-label="8th triplet subdivision"
+          >8th Triplet</button>
+        </div>
       </div>
     </div>
-  )
+
+    {/* Right cluster: transport controls */}
+    <div className="transport-cluster transport-cluster--right">
+
+      <div className="bpm-control">
+        <span className="bpm-label">BPM:</span>
+        <input
+          type="text"
+          className="bpm-value"
+          value={bpm}
+          onChange={handleBpmInputChange}
+          onBlur={handleBpmInputBlur}
+          inputMode="numeric"
+          maxLength="3"
+        />
+        <div className="bpm-arrows">
+          <button className="arrow-btn" onClick={handleBpmIncrease} aria-label="Increase BPM">▲</button>
+          <button className="arrow-btn" onClick={handleBpmDecrease} aria-label="Decrease BPM">▼</button>
+        </div>
+      </div>
+
+      <button
+        className="transport-btn transport-btn--stop"
+        onClick={handleStopClick}
+        disabled={!isPlaying}
+        aria-label="Stop"
+      >
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <rect x="2" y="2" width="12" height="12" rx="1" />
+        </svg>
+      </button>
+
+      <button
+        className="transport-btn transport-btn--play"
+        onClick={handlePlayClick}
+        disabled={isPlaying}
+        aria-label="Play"
+      >
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4 2.5l10 5.5-10 5.5V2.5z" />
+        </svg>
+      </button>
+
+      <BarCountSelector
+        barCount={barCount}
+        onSelectBarCount={handleSelectBarCount}
+        isLocked={isPlaying}
+        handlebarCountDecrease={handleBarCountDecrease}
+        handlebarCountIncrease={handleBarCountIncrease}
+      />
+    </div>
+  </div>
+)
 }

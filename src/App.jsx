@@ -3,23 +3,24 @@ import { AudioSequencerProvider } from './context/AudioSequencerContext'
 import InstrumentPanel from './components/InstrumentPanel'
 import RhythmGrid from './components/RhythmGrid'
 import TransportBar from './components/TransportBar'
+import RotationPrompt from './components/RotationPrompt'
 import './App.css'
 
 export default function App() {
   return (
     <AudioSequencerProvider>
       <div className="app">
+        <RotationPrompt />
         <header className="app-header">
           <h1 className="app-title">playground</h1>
         </header>
-
-        <div className="app-workspace">
+        <div className="app-body">
           <InstrumentPanel />
-          <div className="grid-area">
+          <main className="grid-area">
             <RhythmGrid />
-            <TransportBar />
-          </div>
+          </main>
         </div>
+        <TransportBar />
       </div>
     </AudioSequencerProvider>
   )
