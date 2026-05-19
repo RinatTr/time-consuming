@@ -15,7 +15,9 @@ export default function RotationPrompt() {
 
   useEffect(() => {
     const checkOrientation = () => {
-      const isMobile = window.matchMedia('(max-width: 768px)').matches
+      //check if browser is on a mobile/rotatable device
+      const isMobile = window.matchMedia("(pointer:coarse)").matches && 
+                 window.matchMedia("(any-hover:none)").matches;
       const isPortraitMode = window.matchMedia('(orientation: portrait)').matches
       setIsPortrait(isMobile && isPortraitMode)
     }
