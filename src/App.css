@@ -50,9 +50,11 @@
   }
 
   .transport-bar {
-    height: 44px;
-    padding: 0 10px;
+    height:min-content;
+    padding: 10px 10px;
     gap: 6px;
+    flex-direction: column-reverse;
+    align-items: flex-start;
   }
 
   .selector-label {
