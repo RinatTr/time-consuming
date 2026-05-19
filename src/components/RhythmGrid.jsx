@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
-import { usePlayheadTracking } from '../hooks/usePlayheadTracking'
 import './RhythmGrid.css'
 
 /**
@@ -24,7 +23,6 @@ function RhythmGridComponent() {
   const localPlayhead = currentStep % currentStepsPerBar
   const playheadInThisBar = Math.floor(currentStep / currentStepsPerBar) === activeBarIndex
 
-  usePlayheadTracking(localPlayhead, playheadInThisBar)
 
   // Handle nub click to toggle step
   const handleNubClick = (absoluteStep) => {

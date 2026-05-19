@@ -13,16 +13,15 @@
   --bg-cell:        #201f1f;
   --bg-cell-hover:  #2b2a2a;
 
-  --border-subtle:  #444748;
+  --border-subtle:  #232526;
   --border-dim:     #2b2a2a;
 
   --text-primary:   #e5e2e1;
   --text-secondary: #8e9192;
   --text-dim:       #444748;
 
-  --accent:         #38bdf8;
-  --accent-dim:     rgba(56, 189, 248, 0.12);
-  
+  --accent:         #e5e2e1;
+
   --border-radius: 3px;
   --font-ui:    "Plus Jakarta Sans", sans-serif;
   --font-mono:  "IBM Plex Mono", monospace;

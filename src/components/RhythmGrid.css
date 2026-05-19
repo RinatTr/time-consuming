@@ -22,7 +22,6 @@
 
 .bar-pair[data-active="true"] {
   background: var(--bg-cell);
-  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
 }
 

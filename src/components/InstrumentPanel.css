@@ -26,6 +26,7 @@
 }
 
 .instrument-row {
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -66,7 +67,8 @@
 
 .instrument-label {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 11px;
+  text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-primary);
@@ -162,4 +164,13 @@
     /* don't display inner text but keep the button visible */
     text-indent: -9999px;
   }
+
+  .role-toggle.role-toggle--host {
+    background-color: var(--color-host, #a78bfa);
+    border-color: var(--color-host, #a78bfa);
+  }
+
+  .role-toggle.role-toggle--guest {
+    background-color: var(--color-guest, #fb923c);
+    border-color: var(--color-guest, #fb923c);
 }
