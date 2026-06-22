@@ -43,6 +43,7 @@
   .instrument-panel {
     width: 140px;
     min-width: 140px;
+    overflow-y: scroll;
   }
 
   .app-header {
