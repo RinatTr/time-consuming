@@ -41,8 +41,9 @@
 /* Mobile landscape: instrument panel icon-only */
 @media (max-width: 768px) and (orientation: landscape) {
   .instrument-panel {
-    width: 140px;
-    min-width: 140px;
+    width: 116px;
+    min-width: 116px;
+    overflow-y: scroll;
   }
 
   .app-header {
@@ -52,7 +53,7 @@
   .transport-bar {
     height:min-content;
     padding: 10px 10px;
-    gap: 6px;
+    gap: 8px;
     flex-direction: column-reverse;
     align-items: flex-start;
   }

@@ -23,6 +23,8 @@ export default function InstrumentPanel() {
   const [activeInstrument, setActiveInstrument] = useState(null)
 
   const handleIconClick = async (instrumentId) => {
+    const isMobile = window.matchMedia("(pointer: coarse)").matches;
+    if (isMobile) return;
     try {
       if (!drumMachine.isInitialized) {
         await drumMachine.initialize()
@@ -55,7 +57,8 @@ export default function InstrumentPanel() {
               className={`instrument-row role--${role}${isSelected ? ' instrument-row--selected' : ''}`}
               onClick={() => selectInstrument(id)}
               title={`Click to select ${label}`}
-            >
+            > 
+            {/* // on mobile we want the img to not be clickable anymore and only used as background to the label */}
               <img
                 className={`instrument-icon${activeInstrument === id ? ' active' : ''}`}
                 src={img}
