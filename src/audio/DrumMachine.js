@@ -22,10 +22,9 @@ const SAMPLE_FILES = {
   guitar: guitarUrl, // full dyad already voiced in the sample, triggered as-is
 }
 
-// Short fade applied to every player to prevent clicks/pops when a sample is
+// Short fade applied to every sampler to prevent clicks/pops when a sample is
 // cut off early — either by a same-instrument retrigger, or by the tempo-aware
-// max-duration cap in triggerInstrument(). This is the standard Tone.js approach
-// for avoiding discontinuities when stopping a sample before its natural end.
+// max-duration cap in triggerInstrument().
 const FADE_OUT_SECONDS = 0.02
 const FADE_IN_SECONDS = 0.005
 
@@ -40,9 +39,8 @@ class DrumMachine {
     this.currentStep = 0
     this.stepCallbacks = []
 
-    // One Tone.Player per instrument — each sample is triggered as a single
-    // mono one-shot voice (no polyphony needed; each sample already contains
-    // everything it needs to represent that instrument's hit).
+    // One Tone.Sampler per instrument. Each sample is mapped to 'C4'.
+    // We enforce mono one-shot behavior by releasing previous voices on retrigger.
     this.synths = {
       kick: null,
       snare: null,
@@ -73,7 +71,7 @@ class DrumMachine {
   }
 
   /**
-   * Initialize the audio context, create sample players, and wait for all
+   * Initialize the audio context, create routing, and wait for all
    * sample buffers to finish loading.
    * Must be called after a user gesture (e.g., Play button click).
    */
@@ -84,22 +82,18 @@ class DrumMachine {
       await Tone.start()
       Tone.getTransport().bpm.value = 100
       Tone.getTransport().timeSignature = [4, 4]
-      this.createSynths()
+      
+      this.createRouting()
       await this.loadSamples()
 
       // Monitor AudioContext state transitions (Phase 3 — Lifecycle / Fail-Safety).
       // 'suspended': browser autoplay policy or tab backgrounded.
       // 'interrupted': OS-level interruption (phone call, system alert) — Chrome 2024+.
-      // Store the handler ref so dispose() can remove it and prevent listener leaks
-      // if initialize() is called again after dispose().
       const rawCtx = Tone.getContext().rawContext
       this._stateChangeHandler = () => {
         if (rawCtx.state === 'interrupted' || rawCtx.state === 'suspended') {
           if (this.isPlaying) {
             Tone.getTransport().pause()
-            // NOTE: do not set this.isPlaying = false here — the context may
-            // resume automatically (e.g. tab re-focus). The caller should listen
-            // for this event and update UI accordingly, then call play() again.
           }
         }
       }
@@ -107,6 +101,7 @@ class DrumMachine {
 
       this._rawCtx = rawCtx
       this.isInitialized = true
+      
       if (process.env.NODE_ENV === 'development') {
         console.log('DrumMachine initialized')
       }
@@ -117,29 +112,19 @@ class DrumMachine {
   }
 
   /**
-   * Create all sample players and routing nodes.
+   * Create all routing nodes.
    *
    * Output chain (skill: Phase 7 — Fail-Safe Chain Architecture):
-   *   All players → masterLimiter (-2 dBFS) → masterMeter → Destination
-   *
-   * No per-instrument effects (filters/chorus/distortion) are applied — the
-   * samples already carry their intended tonal character, so players connect
-   * straight into the limiter.
-   *
-   * Volumes default to 0 dB (neutral) since there's no loudness spec for the
-   * samples yet. Use setInstrumentVolume() to tune per-instrument levels later.
+   *   All samplers → masterLimiter (-2 dBFS) → masterMeter → Destination
    */
-  createSynths() {
-    // --- Master output chain (built first so players can .connect() into it) ---
+  createRouting() {
+    // --- Master output chain (built first so samplers can .connect() into it) ---
     this.nodes.masterLimiter = new Tone.Limiter(-2).toDestination()
     // Meter passively taps the limiter for signal-health diagnostics (dBFS)
     this.nodes.masterMeter = new Tone.Meter({ normalRange: false })
     this.nodes.masterLimiter.connect(this.nodes.masterMeter)
 
     // Signal health monitor (Phase 7 — Fail-Safe Chain Architecture).
-    // Runs on the main thread every 2s — well outside the audio render budget.
-    // Catches NaN/Inf (feedback loop, uninitialized buffer) and near-clip conditions
-    // that the limiter handles but should still be visible during development.
     this._healthMonitorId = setInterval(() => {
       const level = this.nodes.masterMeter?.getValue()
       if (level === undefined || level === null) return
@@ -150,29 +135,30 @@ class DrumMachine {
         console.warn(`[DrumMachine] Output near limiter ceiling: ${db.toFixed(1)} dBFS`)
       }
     }, 2000)
-
-    // --- One Tone.Player per instrument ---
-    // fadeOut/fadeIn are set here so every stop (whether from a retrigger cutoff
-    // or the tempo-aware max-duration cap) ramps instead of hard-cutting.
-    Object.keys(this.synths).forEach((instrumentName) => {
-      this.synths[instrumentName] = new Tone.Player({
-        fadeOut: FADE_OUT_SECONDS,
-        fadeIn: FADE_IN_SECONDS,
-        volume: 0,
-      }).connect(this.nodes.masterLimiter)
-    })
   }
 
   /**
-   * Load all sample buffers and wait for them to finish.
+   * Instantiate Samplers and load all sample buffers.
    * Failures are logged per-instrument and do not block the other samples
-   * from loading — a missing/broken sample just means that instrument stays
-   * silent (triggerInstrument() checks player.loaded before playing).
+   * from loading.
    */
   async loadSamples() {
     const loadPromises = Object.entries(SAMPLE_FILES).map(([instrumentName, url]) => {
-      const player = this.synths[instrumentName]
-      return player.load(url).catch((error) => {
+      return new Promise((resolve, reject) => {
+        const sampler = new Tone.Sampler({
+          // Map each sample to a generic 'C4' trigger note
+          urls: { C4: url },
+          attack: FADE_IN_SECONDS,
+          release: FADE_OUT_SECONDS,
+          volume: 0,
+          onload: () => resolve(),
+          onerror: (err) => reject(err),
+        })
+
+        sampler.connect(this.nodes.masterLimiter)
+        this.synths[instrumentName] = sampler
+
+      }).catch((error) => {
         console.warn(`[DrumMachine] Failed to load sample for "${instrumentName}" (${url}):`, error)
       })
     })
@@ -188,54 +174,52 @@ class DrumMachine {
    * @param {string} instrumentName
    * @param {number} [time] - scheduled Tone.js time
    * @param {number|null} [maxDuration] - optional cap (seconds) on playback length.
-   *   Passed by the sequencer as the current step interval, so a sample's natural
-   *   length can never outlast the step it was triggered on and pile up against
-   *   the next retrigger at fast tempos. Manual/preview triggers omit this and
-   *   play the sample to its natural length.
    */
   triggerInstrument(instrumentName, time = Tone.now(), maxDuration = null) {
     if (!this.isInitialized) return
 
-    const player = this.synths[instrumentName]
-    if (!player) {
+    const sampler = this.synths[instrumentName]
+    if (!sampler) {
       console.warn(`Instrument not found: ${instrumentName}`)
       return
     }
-    if (!player.loaded) {
+    if (!sampler.loaded) {
       console.warn(`[DrumMachine] Sample not yet loaded for "${instrumentName}", skipping trigger`)
       return
     }
 
-    // Cut off any still-playing previous hit before retriggering (mono one-shot
-    // behavior). The player's fadeOut ramps amplitude down over FADE_OUT_SECONDS
-    // instead of hard-stopping, avoiding an audible click/pop on the cutoff.
-    if (player.state === 'started') {
-      player.stop(time + 0.001)
-    }
-    player.start(time)
+    // Mono one-shot behavior: Gracefully fade out the previous hit 
+    // over FADE_OUT_SECONDS if it's still ringing.
+    sampler.triggerRelease('C4', time)
 
-    // Tempo-aware safeguard: cap playback to maxDuration when the sample is
-    // longer than the step it was triggered on. Uses the same fadeOut ramp,
-    // so shortening a long sample at fast tempos still sounds clean.
-    if (maxDuration && player.buffer?.duration > maxDuration) {
-      player.stop(time + maxDuration)
+    // Start the new hit slightly after to avoid the release choking the new attack
+    const triggerTime = time + 0.001
+
+    if (maxDuration) {
+      // Multiply the step duration so the sample rings out longer than a single step,
+      // but still scales proportionally with the current BPM.
+      // 2.0 = rings for two steps. 1.5 = rings for one and a half steps.
+      const TAIL_MULTIPLIER = 1.25
+      const scaledDuration = maxDuration * TAIL_MULTIPLIER
+      
+      sampler.triggerAttackRelease('C4', scaledDuration, triggerTime)
+    } else {
+      sampler.triggerAttack('C4', triggerTime)
     }
   }
 
   /**
-   * Set the volume (in dB) for a single instrument's sample player.
-   * No loudness spec exists yet for the samples — this is the hook for tuning
-   * per-instrument levels later without touching playback logic.
+   * Set the volume (in dB) for a single instrument's sampler.
    */
   setInstrumentVolume(instrumentName, volumeDb) {
-    const player = this.synths[instrumentName]
-    if (player) {
-      player.volume.value = volumeDb
+    const sampler = this.synths[instrumentName]
+    if (sampler) {
+      sampler.volume.value = volumeDb
     }
   }
 
   /**
-   * Get the current volume (in dB) for an instrument's sample player.
+   * Get the current volume (in dB) for an instrument's sampler.
    */
   getInstrumentVolume(instrumentName) {
     return this.synths[instrumentName]?.volume.value ?? null
@@ -272,21 +256,14 @@ class DrumMachine {
 
     this.sequence = new Tone.Sequence(
       (time, step) => {
-        // Update playhead via Tone.Draw — defers UI callback out of
-        // the audio scheduling path to avoid blocking the scheduler
+        // Update playhead via Tone.Draw
         Tone.getDraw().schedule(() => {
           this.currentStep = step
           this.notifyStepChange(step)
         }, time)
 
-        // Recomputed every step so it tracks the *current* BPM if tempo changes
-        // mid-playback — this is the tempo-aware max-duration cap passed into
-        // triggerInstrument() below.
         const stepDuration = Tone.Time(noteValue).toSeconds()
-        // const stepDuration = 0.1
 
-        // Trigger active instruments using the scheduled time directly —
-        // no secondary schedule() wrapper needed inside a Sequence callback
         Object.keys(this.gridState).forEach((instrumentName) => {
           if (this.gridState[instrumentName][step]) {
             this.triggerInstrument(instrumentName, time, stepDuration)
@@ -302,8 +279,6 @@ class DrumMachine {
 
   /**
    * Start playback.
-   * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
-   * @param {string} noteValue - Tone.js note value ('16n' for 16th, '8t' for 8th-triplet, default '16n')
    */
   play(stepCount = 16, noteValue = '16n') {
     if (!this.isInitialized) {
@@ -313,8 +288,6 @@ class DrumMachine {
 
     if (!this.isPlaying) {
       this.startSequence(stepCount, noteValue)
-      // Start 100ms in the future — avoids scheduling race at t=0
-      // (Tone.js wiki: values under 100ms are not perceptible)
       Tone.getTransport().start('+0.1')
       this.isPlaying = true
       if (process.env.NODE_ENV === 'development') {
@@ -357,7 +330,6 @@ class DrumMachine {
 
   /**
    * Set the Tone.js time signature.
-   * @param {string} hostMeter - '4/4', '5/4', or '6/8'
    */
   setTimeSignature(hostMeter) {
     if (this.isInitialized) {
@@ -391,8 +363,6 @@ class DrumMachine {
 
   /**
    * Dispose and clean up all sample players and routing nodes.
-   * Safe to call multiple times. After dispose(), initialize() can be called
-   * again to rebuild the graph from scratch.
    */
   dispose() {
     if (this.isPlaying) this.stop()
@@ -406,12 +376,12 @@ class DrumMachine {
       this.sequence.dispose()
       this.sequence = null
     }
-    Object.values(this.synths).forEach((player) => player?.dispose())
+    Object.values(this.synths).forEach((sampler) => sampler?.dispose())
     Object.values(this.nodes).forEach((node) => node?.dispose())
-    // Reset refs so disposed nodes are not double-disposed on a second call
+    
     Object.keys(this.synths).forEach((k) => (this.synths[k] = null))
     Object.keys(this.nodes).forEach((k) => (this.nodes[k] = null))
-    // Allow re-initialization (e.g. after a hot reload or session reset)
+    
     this.isInitialized = false
   }
 
@@ -443,27 +413,5 @@ class DrumMachine {
   }
 }
 
-// Export the class, not a pre-constructed instance.
-//
-// WHY: `export default new DrumMachine()` creates the instance at module evaluation
-// time and ties its lifetime to the module's scope. In React dev mode, Vite/webpack
-// HMR re-evaluates modules on every hot reload — but Tone.js's AudioContext and
-// internal graph survive in the browser's audio thread. The result is that the new
-// JS instance loses its references to the still-running audio nodes, orphaning them
-// in the graph while the new instance builds a second set on top. This causes
-// doubled voices, accumulated polyphony, and growing render-budget pressure that
-// manifests as distortion and audio glitches that worsen over a dev session.
-//
-// Instead, construct and own the instance inside AudioSequencerProvider (or an
-// equivalent React context / singleton hook) using a ref + useEffect cleanup:
-//
-//   const drumMachine = useRef(null)
-//   useEffect(() => {
-//     drumMachine.current = new DrumMachine()
-//     return () => drumMachine.current?.dispose()
-//   }, [])
-//
-// This ties the instance lifecycle to the React tree, not the module scope,
-// so HMR and StrictMode double-invocation both clean up correctly.
 export { DrumMachine }
 export default DrumMachine
