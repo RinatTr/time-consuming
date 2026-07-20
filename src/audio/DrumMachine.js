@@ -1,9 +1,36 @@
 import * as Tone from 'tone'
 import { getToneTimeSignature } from './phraseCalculator'
 
+// Sample files live next to this module in ./samples. Importing with the `?url`
+// suffix asks Vite to resolve each file to its correct dev-server/build URL —
+// a bare relative string like './samples/x.mp3' would instead be resolved by
+// the browser against the *page* URL at fetch time, not against this module's
+// location, which is why that approach 404s.
+import kickUrl from './samples/kick.mp3?url'
+import snareUrl from './samples/snare.mp3?url'
+import hihatUrl from './samples/hh.mp3?url'
+import bassUrl from './samples/bassC.mp3?url'
+import keysUrl from './samples/keys.mp3?url'
+import guitarUrl from './samples/guitar.mp3?url'
+
+const SAMPLE_FILES = {
+  kick: kickUrl,
+  snare: snareUrl,
+  hihat: hihatUrl,
+  bass: bassUrl,     // fixed to the C sample — matches prior hardcoded 'C2' trigger
+  keys: keysUrl,     // full chord already voiced in the sample, triggered as-is
+  guitar: guitarUrl, // full dyad already voiced in the sample, triggered as-is
+}
+
+// Short fade applied to every sampler to prevent clicks/pops when a sample is
+// cut off early — either by a same-instrument retrigger, or by the tempo-aware
+// max-duration cap in triggerInstrument().
+const FADE_OUT_SECONDS = 0.02
+const FADE_IN_SECONDS = 0.005
+
 /**
  * DrumMachine - Audio engine for the polyrhythmic sequencer
- * Manages Tone.js setup, sound synthesis, sequencing, and transport control
+ * Manages Tone.js setup, sample playback, sequencing, and transport control
  */
 class DrumMachine {
   constructor() {
@@ -12,25 +39,22 @@ class DrumMachine {
     this.currentStep = 0
     this.stepCallbacks = []
 
+    // One Tone.Sampler per instrument. Each sample is mapped to 'C4'.
+    // We enforce mono one-shot behavior by releasing previous voices on retrigger.
     this.synths = {
       kick: null,
       snare: null,
-      snareBody: null, // internal — layered with snare, not a separate grid track
       hihat: null,
       bass: null,
       keys: null,
       guitar: null,
     }
 
-    // Intermediate routing nodes that need explicit disposal
+    // Intermediate routing nodes that need explicit disposal.
     this.nodes = {
-      snareHPF: null,
-      keysChorus: null,
-      hihatHPF: null,
-      guitarDistortion: null,
       // Fail-safe output chain (skill: Phase 7 — Minimum Safe Chain Topology)
-      // All synths route through masterLimiter → masterMeter → Destination
-      // Prevents digital clipping when multiple instruments fire simultaneously
+      // All sample players route directly through masterLimiter → masterMeter → Destination.
+      // Prevents digital clipping when multiple instruments fire simultaneously.
       masterLimiter: null,
       masterMeter: null,
     }
@@ -47,8 +71,8 @@ class DrumMachine {
   }
 
   /**
-   * Initialize the audio context and create synths.
-   * the bpm and time signature are hard coded but configured through the ui controls
+   * Initialize the audio context, create routing, and wait for all
+   * sample buffers to finish loading.
    * Must be called after a user gesture (e.g., Play button click).
    */
   async initialize() {
@@ -58,21 +82,18 @@ class DrumMachine {
       await Tone.start()
       Tone.getTransport().bpm.value = 100
       Tone.getTransport().timeSignature = [4, 4]
-      this.createSynths()
+      
+      this.createRouting()
+      await this.loadSamples()
 
       // Monitor AudioContext state transitions (Phase 3 — Lifecycle / Fail-Safety).
       // 'suspended': browser autoplay policy or tab backgrounded.
       // 'interrupted': OS-level interruption (phone call, system alert) — Chrome 2024+.
-      // Store the handler ref so dispose() can remove it and prevent listener leaks
-      // if initialize() is called again after dispose().
       const rawCtx = Tone.getContext().rawContext
       this._stateChangeHandler = () => {
         if (rawCtx.state === 'interrupted' || rawCtx.state === 'suspended') {
           if (this.isPlaying) {
             Tone.getTransport().pause()
-            // NOTE: do not set this.isPlaying = false here — the context may
-            // resume automatically (e.g. tab re-focus). The caller should listen
-            // for this event and update UI accordingly, then call play() again.
           }
         }
       }
@@ -80,6 +101,7 @@ class DrumMachine {
 
       this._rawCtx = rawCtx
       this.isInitialized = true
+      
       if (process.env.NODE_ENV === 'development') {
         console.log('DrumMachine initialized')
       }
@@ -90,26 +112,19 @@ class DrumMachine {
   }
 
   /**
-   * Create all synthesizers and routing nodes.
+   * Create all routing nodes.
    *
    * Output chain (skill: Phase 7 — Fail-Safe Chain Architecture):
-   *   All synths → masterLimiter (-2 dBFS) → masterMeter → Destination
-   *
-   * Prevents digital clipping when multiple instruments fire on the same step,
-   * which is the root cause of the distortion. A hard limiter at -2 dBFS gives
-   * 2 dB of headroom while being inaudible under normal mixed loads.
+   *   All samplers → masterLimiter (-2 dBFS) → masterMeter → Destination
    */
-  createSynths() {
-    // --- Master output chain (built first so synths can .connect() into it) ---
+  createRouting() {
+    // --- Master output chain (built first so samplers can .connect() into it) ---
     this.nodes.masterLimiter = new Tone.Limiter(-2).toDestination()
     // Meter passively taps the limiter for signal-health diagnostics (dBFS)
     this.nodes.masterMeter = new Tone.Meter({ normalRange: false })
     this.nodes.masterLimiter.connect(this.nodes.masterMeter)
 
     // Signal health monitor (Phase 7 — Fail-Safe Chain Architecture).
-    // Runs on the main thread every 2s — well outside the audio render budget.
-    // Catches NaN/Inf (feedback loop, uninitialized buffer) and near-clip conditions
-    // that the limiter handles but should still be visible during development.
     this._healthMonitorId = setInterval(() => {
       const level = this.nodes.masterMeter?.getValue()
       if (level === undefined || level === null) return
@@ -120,181 +135,94 @@ class DrumMachine {
         console.warn(`[DrumMachine] Output near limiter ceiling: ${db.toFixed(1)} dBFS`)
       }
     }, 2000)
+  }
 
-    // --- Kick ---
-    this.synths.kick = new Tone.MembraneSynth({
-      pitchDecay: 0.08,
-      octaves: 6,
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.3,
-        sustain: 0,
-        release: 0.1,
-      },
-      volume: -8,
-    }).connect(this.nodes.masterLimiter)
+  /**
+   * Instantiate Samplers and load all sample buffers.
+   * Failures are logged per-instrument and do not block the other samples
+   * from loading.
+   */
+  async loadSamples() {
+    const loadPromises = Object.entries(SAMPLE_FILES).map(([instrumentName, url]) => {
+      return new Promise((resolve, reject) => {
+        const sampler = new Tone.Sampler({
+          // Map each sample to a generic 'C4' trigger note
+          urls: { C4: url },
+          attack: FADE_IN_SECONDS,
+          release: FADE_OUT_SECONDS,
+          volume: 0,
+          onload: () => resolve(),
+          onerror: (err) => reject(err),
+        })
 
-    // --- Snare ---
-    // HPF stored on this.nodes so it gets properly disposed
-    this.nodes.snareHPF = new Tone.Filter({
-      frequency: 1800,
-      type: 'highpass',
-      rolloff: -12,
-    }).connect(this.nodes.masterLimiter)
+        sampler.connect(this.nodes.masterLimiter)
+        this.synths[instrumentName] = sampler
 
-    // White noise layer — snare wire rattle
-    this.synths.snare = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.18,
-        sustain: 0,
-        release: 0.05,
-      },
-      volume: -6,
-    }).connect(this.nodes.snareHPF)
+      }).catch((error) => {
+        console.warn(`[DrumMachine] Failed to load sample for "${instrumentName}" (${url}):`, error)
+      })
+    })
 
-    // Tonal body layer — shell resonance, triggered alongside snare noise
-    this.synths.snareBody = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.08,
-        sustain: 0,
-        release: 0.01,
-      },
-      volume: -14,
-    }).connect(this.nodes.masterLimiter)
-
-    // --- Hi-Hat ---
-    // HPF stored on this.nodes so it gets properly disposed
-    this.nodes.hihatHPF = new Tone.Filter({
-      frequency: 8000,
-      type: 'highpass',
-    }).connect(this.nodes.masterLimiter)
-
-    this.synths.hihat = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: {
-            attack: 0.001,
-            decay: 0.03,
-            sustain: 0,
-        },
-        volume: -8,
-          //send dry signal to HPF effect
-        }).connect(this.nodes.hihatHPF)
-
-    // --- Bass ---
-    // volume: -12 matches the instrument's relative weight in the mix.
-    // Without this, the triangle oscillator hits the limiter at near-0 dBFS,
-    // causing limiter pumping that sounds like distortion on bass-heavy patterns.
-    // maxPolyphony: 4 caps voice count — bass notes overlap at fast tempos
-    // (sustain + release = 0.75s) and unbounded polyphony causes them to sum
-    // into the limiter on every step, compounding the loudness problem.
-    this.synths.bass = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 4,
-      oscillator: { type: 'triangle' },
-      envelope: {
-        attack: 0.01,
-        decay: 0.1,
-        sustain: 0.5,
-        release: 0.5,
-      },
-      volume: -10,
-    }).connect(this.nodes.masterLimiter)
-
-    // --- Keys (EP) ---
-    // Slow chorus for classic Rhodes shimmer — stored in this.nodes for disposal
-    this.nodes.keysChorus = new Tone.Chorus({
-      frequency: 3.5,  // slow, warm modulation
-      delayTime: 0.5,
-      depth: 0.4,
-      wet: 0.4,
-      // the start method is needed to trigger the LFO in Tone.Chorus
-    }).connect(this.nodes.masterLimiter).start()
-
-    // fatsine layering 3 detuned sines — mimics the soft tine character of a Rhodes
-    // maxPolyphony: 8 — keys chord is 4 notes; 8 allows one overlap before voice stealing
-    this.synths.keys = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 4,
-      oscillator: {
-        type: 'fatsine',
-        count: 3,   // 3 slightly detuned sine voices layered
-        spread: 20, // subtle detune spread in cents
-      },
-      envelope: {
-        attack: 0.02,  // slight bloom
-        decay: 0.4,    // longer decay for EP character
-        sustain: 0.2,
-        release: 0.8,  // ring out naturally
-      },
-      volume: -8,
-      //send dry signal to chorus
-    }).connect(this.nodes.keysChorus)
-    
-      // --- Guitar ---
-    this.nodes.guitarDistortion = new Tone.Distortion(0.14).connect(this.nodes.masterLimiter)
-
-    // maxPolyphony: 4 — guitar is 2-note dyad; 4 allows one overlap before voice stealing
-    this.synths.guitar = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 2,
-      oscillator: {
-        type: 'fatsine',
-        count: 2,   // layered voices to add richness
-        spread: 15,
-      },
-      envelope: {
-      attack: 0, // Tightened for the initial click
-      decay: 0.1,    
-      sustain: 0.2,
-      release: 0.3,  
-    },
-      volume: -8,
-      //send dry signal to distortion
-    }).connect(this.nodes.guitarDistortion)
+    await Promise.all(loadPromises)
   }
 
   /**
    * Trigger a sequencer sound by instrument name.
    * Accepts an optional scheduled `time` from the Tone.js audio clock.
    * Falls back to Tone.now() for manual/preview triggers (e.g. pad clicks).
+   *
+   * @param {string} instrumentName
+   * @param {number} [time] - scheduled Tone.js time
+   * @param {number|null} [maxDuration] - optional cap (seconds) on playback length.
    */
-  triggerInstrument(instrumentName, time = Tone.now()) {
+  triggerInstrument(instrumentName, time = Tone.now(), maxDuration = null) {
     if (!this.isInitialized) return
 
-    switch (instrumentName) {
-      case 'kick':
-        // 0.5s absolute — MembraneSynth ignores sustain so duration = decay runway
-        this.synths.kick.triggerAttackRelease('C1', 0.5, time)
-        break
-      case 'snare':
-        // Both layers triggered at the same scheduled time.
-        // '16n' / '32n' are intentionally note-relative — snare transients
-        // are <50ms at any musical tempo so tempo-scaling is inaudible here.
-        this.synths.snare.triggerAttackRelease('16n', time)
-        this.synths.snareBody.triggerAttackRelease(['D2', 'E3'], '32n', time)
-        break
-      case 'hihat':
-        this.synths.hihat.triggerAttackRelease('16n', time)
-        break
-      case 'bass':
-        this.synths.bass.triggerAttackRelease('C2', 0.25, time)
-        break
-      case 'keys':
-        // Fixed absolute duration (seconds) — not a note value like '8n'.
-        // Note values scale with BPM: at 60 BPM '8n' = 500ms; at 180 BPM = 167ms.
-        // Using seconds keeps the EP bloom and ring-out consistent at all tempi.
-        this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], 0.35, time)
-        break
-      case 'guitar':
-        // Same rationale: fixed seconds for a consistent pluck shape at any BPM.
-        this.synths.guitar.triggerAttackRelease(['G4', 'G5'], 0.18, time)
-        break
-      default:
-        console.warn(`Instrument not found: ${instrumentName}`)
-        break
+    const sampler = this.synths[instrumentName]
+    if (!sampler) {
+      console.warn(`Instrument not found: ${instrumentName}`)
+      return
     }
+    if (!sampler.loaded) {
+      console.warn(`[DrumMachine] Sample not yet loaded for "${instrumentName}", skipping trigger`)
+      return
+    }
+
+    // Mono one-shot behavior: Gracefully fade out the previous hit 
+    // over FADE_OUT_SECONDS if it's still ringing.
+    sampler.triggerRelease('C4', time)
+
+    // Start the new hit slightly after to avoid the release choking the new attack
+    const triggerTime = time + 0.001
+
+    if (maxDuration) {
+      // Multiply the step duration so the sample rings out longer than a single step,
+      // but still scales proportionally with the current BPM.
+      // 2.0 = rings for two steps. 1.5 = rings for one and a half steps.
+      const TAIL_MULTIPLIER = 1.25
+      const scaledDuration = maxDuration * TAIL_MULTIPLIER
+      
+      sampler.triggerAttackRelease('C4', scaledDuration, triggerTime)
+    } else {
+      sampler.triggerAttack('C4', triggerTime)
+    }
+  }
+
+  /**
+   * Set the volume (in dB) for a single instrument's sampler.
+   */
+  setInstrumentVolume(instrumentName, volumeDb) {
+    const sampler = this.synths[instrumentName]
+    if (sampler) {
+      sampler.volume.value = volumeDb
+    }
+  }
+
+  /**
+   * Get the current volume (in dB) for an instrument's sampler.
+   */
+  getInstrumentVolume(instrumentName) {
+    return this.synths[instrumentName]?.volume.value ?? null
   }
 
   /**
@@ -328,18 +256,17 @@ class DrumMachine {
 
     this.sequence = new Tone.Sequence(
       (time, step) => {
-        // Update playhead via Tone.Draw — defers UI callback out of
-        // the audio scheduling path to avoid blocking the scheduler
+        // Update playhead via Tone.Draw
         Tone.getDraw().schedule(() => {
           this.currentStep = step
           this.notifyStepChange(step)
         }, time)
 
-        // Trigger active instruments using the scheduled time directly —
-        // no secondary schedule() wrapper needed inside a Sequence callback
+        const stepDuration = Tone.Time(noteValue).toSeconds()
+
         Object.keys(this.gridState).forEach((instrumentName) => {
           if (this.gridState[instrumentName][step]) {
-            this.triggerInstrument(instrumentName, time)
+            this.triggerInstrument(instrumentName, time, stepDuration)
           }
         })
       },
@@ -352,8 +279,6 @@ class DrumMachine {
 
   /**
    * Start playback.
-   * @param {number} stepCount - Number of steps to loop through (16, 32, 48, or 64 for multi-bar)
-   * @param {string} noteValue - Tone.js note value ('16n' for 16th, '8t' for 8th-triplet, default '16n')
    */
   play(stepCount = 16, noteValue = '16n') {
     if (!this.isInitialized) {
@@ -363,8 +288,6 @@ class DrumMachine {
 
     if (!this.isPlaying) {
       this.startSequence(stepCount, noteValue)
-      // Start 100ms in the future — avoids scheduling race at t=0
-      // (Tone.js wiki: values under 100ms are not perceptible)
       Tone.getTransport().start('+0.1')
       this.isPlaying = true
       if (process.env.NODE_ENV === 'development') {
@@ -407,7 +330,6 @@ class DrumMachine {
 
   /**
    * Set the Tone.js time signature.
-   * @param {string} hostMeter - '4/4', '5/4', or '6/8'
    */
   setTimeSignature(hostMeter) {
     if (this.isInitialized) {
@@ -440,9 +362,7 @@ class DrumMachine {
   }
 
   /**
-   * Dispose and clean up all synths and routing nodes.
-   * Safe to call multiple times. After dispose(), initialize() can be called
-   * again to rebuild the graph from scratch.
+   * Dispose and clean up all sample players and routing nodes.
    */
   dispose() {
     if (this.isPlaying) this.stop()
@@ -456,12 +376,12 @@ class DrumMachine {
       this.sequence.dispose()
       this.sequence = null
     }
-    Object.values(this.synths).forEach((synth) => synth?.dispose())
+    Object.values(this.synths).forEach((sampler) => sampler?.dispose())
     Object.values(this.nodes).forEach((node) => node?.dispose())
-    // Reset refs so disposed nodes are not double-disposed on a second call
+    
     Object.keys(this.synths).forEach((k) => (this.synths[k] = null))
     Object.keys(this.nodes).forEach((k) => (this.nodes[k] = null))
-    // Allow re-initialization (e.g. after a hot reload or session reset)
+    
     this.isInitialized = false
   }
 
@@ -493,27 +413,5 @@ class DrumMachine {
   }
 }
 
-// Export the class, not a pre-constructed instance.
-//
-// WHY: `export default new DrumMachine()` creates the instance at module evaluation
-// time and ties its lifetime to the module's scope. In React dev mode, Vite/webpack
-// HMR re-evaluates modules on every hot reload — but Tone.js's AudioContext and
-// internal graph survive in the browser's audio thread. The result is that the new
-// JS instance loses its references to the still-running audio nodes, orphaning them
-// in the graph while the new instance builds a second set on top. This causes
-// doubled voices, accumulated polyphony, and growing render-budget pressure that
-// manifests as distortion and audio glitches that worsen over a dev session.
-//
-// Instead, construct and own the instance inside AudioSequencerProvider (or an
-// equivalent React context / singleton hook) using a ref + useEffect cleanup:
-//
-//   const drumMachine = useRef(null)
-//   useEffect(() => {
-//     drumMachine.current = new DrumMachine()
-//     return () => drumMachine.current?.dispose()
-//   }, [])
-//
-// This ties the instance lifecycle to the React tree, not the module scope,
-// so HMR and StrictMode double-invocation both clean up correctly.
 export { DrumMachine }
 export default DrumMachine

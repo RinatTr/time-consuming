@@ -10,10 +10,10 @@ import snareImg    from '../../assets/resize/instrument-snare.png'
 import kickImg     from '../../assets/resize/instrument-kick.png'
 
 const instruments = [
-  { id: 'hihat',  label: 'Hi-Hat', img: hihatImg    },
   { id: 'keys',   label: 'Keys',   img: keyboardImg },
   { id: 'guitar', label: 'Guitar', img: guitarImg   },
   { id: 'bass',   label: 'Bass',   img: bassImg     },
+  { id: 'hihat',  label: 'Hi-Hat', img: hihatImg    },
   { id: 'snare',  label: 'Snare',  img: snareImg    },
   { id: 'kick',   label: 'Kick',   img: kickImg     },
 ]
