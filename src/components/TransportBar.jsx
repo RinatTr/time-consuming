@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { BarCountSelector } from './BarCountSelector'
 import './TransportBar.css'
@@ -31,6 +31,27 @@ export default function TransportBar() {
   const handleStopClick = useCallback(() => {
     stop()
   }, [stop])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Optional but recommended: Prevent the toggle if the user is typing in an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault(); // Prevents the page from scrolling down when pressing space
+        isPlaying ? handleStopClick() : handlePlayClick();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Return a cleanup function to remove the listener
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPlaying, handleStopClick, handlePlayClick]);
 
   const handleBpmIncrease = useCallback(() => {
     // Clamp BPM between 0 and 260
@@ -197,7 +218,6 @@ export default function TransportBar() {
           <button className="arrow-btn" onClick={handleBpmDecrease} aria-label="Decrease BPM">▼</button>
         </div>
       </div>
-
       <button
         className="transport-btn transport-btn--stop"
         onClick={handleStopClick}
