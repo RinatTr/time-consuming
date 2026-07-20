@@ -1,9 +1,37 @@
 import * as Tone from 'tone'
 import { getToneTimeSignature } from './phraseCalculator'
 
+// Sample files live next to this module in ./samples. Importing with the `?url`
+// suffix asks Vite to resolve each file to its correct dev-server/build URL —
+// a bare relative string like './samples/x.mp3' would instead be resolved by
+// the browser against the *page* URL at fetch time, not against this module's
+// location, which is why that approach 404s.
+import kickUrl from './samples/kick.mp3?url'
+import snareUrl from './samples/snare.mp3?url'
+import hihatUrl from './samples/hh.mp3?url'
+import bassUrl from './samples/bassC.mp3?url'
+import keysUrl from './samples/keys.mp3?url'
+import guitarUrl from './samples/guitar.mp3?url'
+
+const SAMPLE_FILES = {
+  kick: kickUrl,
+  snare: snareUrl,
+  hihat: hihatUrl,
+  bass: bassUrl,     // fixed to the C sample — matches prior hardcoded 'C2' trigger
+  keys: keysUrl,     // full chord already voiced in the sample, triggered as-is
+  guitar: guitarUrl, // full dyad already voiced in the sample, triggered as-is
+}
+
+// Short fade applied to every player to prevent clicks/pops when a sample is
+// cut off early — either by a same-instrument retrigger, or by the tempo-aware
+// max-duration cap in triggerInstrument(). This is the standard Tone.js approach
+// for avoiding discontinuities when stopping a sample before its natural end.
+const FADE_OUT_SECONDS = 0.02
+const FADE_IN_SECONDS = 0.005
+
 /**
  * DrumMachine - Audio engine for the polyrhythmic sequencer
- * Manages Tone.js setup, sound synthesis, sequencing, and transport control
+ * Manages Tone.js setup, sample playback, sequencing, and transport control
  */
 class DrumMachine {
   constructor() {
@@ -12,25 +40,23 @@ class DrumMachine {
     this.currentStep = 0
     this.stepCallbacks = []
 
+    // One Tone.Player per instrument — each sample is triggered as a single
+    // mono one-shot voice (no polyphony needed; each sample already contains
+    // everything it needs to represent that instrument's hit).
     this.synths = {
       kick: null,
       snare: null,
-      snareBody: null, // internal — layered with snare, not a separate grid track
       hihat: null,
       bass: null,
       keys: null,
       guitar: null,
     }
 
-    // Intermediate routing nodes that need explicit disposal
+    // Intermediate routing nodes that need explicit disposal.
     this.nodes = {
-      snareHPF: null,
-      keysChorus: null,
-      hihatHPF: null,
-      guitarDistortion: null,
       // Fail-safe output chain (skill: Phase 7 — Minimum Safe Chain Topology)
-      // All synths route through masterLimiter → masterMeter → Destination
-      // Prevents digital clipping when multiple instruments fire simultaneously
+      // All sample players route directly through masterLimiter → masterMeter → Destination.
+      // Prevents digital clipping when multiple instruments fire simultaneously.
       masterLimiter: null,
       masterMeter: null,
     }
@@ -47,8 +73,8 @@ class DrumMachine {
   }
 
   /**
-   * Initialize the audio context and create synths.
-   * the bpm and time signature are hard coded but configured through the ui controls
+   * Initialize the audio context, create sample players, and wait for all
+   * sample buffers to finish loading.
    * Must be called after a user gesture (e.g., Play button click).
    */
   async initialize() {
@@ -59,6 +85,7 @@ class DrumMachine {
       Tone.getTransport().bpm.value = 100
       Tone.getTransport().timeSignature = [4, 4]
       this.createSynths()
+      await this.loadSamples()
 
       // Monitor AudioContext state transitions (Phase 3 — Lifecycle / Fail-Safety).
       // 'suspended': browser autoplay policy or tab backgrounded.
@@ -90,17 +117,20 @@ class DrumMachine {
   }
 
   /**
-   * Create all synthesizers and routing nodes.
+   * Create all sample players and routing nodes.
    *
    * Output chain (skill: Phase 7 — Fail-Safe Chain Architecture):
-   *   All synths → masterLimiter (-2 dBFS) → masterMeter → Destination
+   *   All players → masterLimiter (-2 dBFS) → masterMeter → Destination
    *
-   * Prevents digital clipping when multiple instruments fire on the same step,
-   * which is the root cause of the distortion. A hard limiter at -2 dBFS gives
-   * 2 dB of headroom while being inaudible under normal mixed loads.
+   * No per-instrument effects (filters/chorus/distortion) are applied — the
+   * samples already carry their intended tonal character, so players connect
+   * straight into the limiter.
+   *
+   * Volumes default to 0 dB (neutral) since there's no loudness spec for the
+   * samples yet. Use setInstrumentVolume() to tune per-instrument levels later.
    */
   createSynths() {
-    // --- Master output chain (built first so synths can .connect() into it) ---
+    // --- Master output chain (built first so players can .connect() into it) ---
     this.nodes.masterLimiter = new Tone.Limiter(-2).toDestination()
     // Meter passively taps the limiter for signal-health diagnostics (dBFS)
     this.nodes.masterMeter = new Tone.Meter({ normalRange: false })
@@ -121,180 +151,94 @@ class DrumMachine {
       }
     }, 2000)
 
-    // --- Kick ---
-    this.synths.kick = new Tone.MembraneSynth({
-      pitchDecay: 0.08,
-      octaves: 6,
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.3,
-        sustain: 0,
-        release: 0.1,
-      },
-      volume: -8,
-    }).connect(this.nodes.masterLimiter)
+    // --- One Tone.Player per instrument ---
+    // fadeOut/fadeIn are set here so every stop (whether from a retrigger cutoff
+    // or the tempo-aware max-duration cap) ramps instead of hard-cutting.
+    Object.keys(this.synths).forEach((instrumentName) => {
+      this.synths[instrumentName] = new Tone.Player({
+        fadeOut: FADE_OUT_SECONDS,
+        fadeIn: FADE_IN_SECONDS,
+        volume: 0,
+      }).connect(this.nodes.masterLimiter)
+    })
+  }
 
-    // --- Snare ---
-    // HPF stored on this.nodes so it gets properly disposed
-    this.nodes.snareHPF = new Tone.Filter({
-      frequency: 1800,
-      type: 'highpass',
-      rolloff: -12,
-    }).connect(this.nodes.masterLimiter)
+  /**
+   * Load all sample buffers and wait for them to finish.
+   * Failures are logged per-instrument and do not block the other samples
+   * from loading — a missing/broken sample just means that instrument stays
+   * silent (triggerInstrument() checks player.loaded before playing).
+   */
+  async loadSamples() {
+    const loadPromises = Object.entries(SAMPLE_FILES).map(([instrumentName, url]) => {
+      const player = this.synths[instrumentName]
+      return player.load(url).catch((error) => {
+        console.warn(`[DrumMachine] Failed to load sample for "${instrumentName}" (${url}):`, error)
+      })
+    })
 
-    // White noise layer — snare wire rattle
-    this.synths.snare = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.18,
-        sustain: 0,
-        release: 0.05,
-      },
-      volume: -6,
-    }).connect(this.nodes.snareHPF)
-
-    // Tonal body layer — shell resonance, triggered alongside snare noise
-    this.synths.snareBody = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.08,
-        sustain: 0,
-        release: 0.01,
-      },
-      volume: -14,
-    }).connect(this.nodes.masterLimiter)
-
-    // --- Hi-Hat ---
-    // HPF stored on this.nodes so it gets properly disposed
-    this.nodes.hihatHPF = new Tone.Filter({
-      frequency: 8000,
-      type: 'highpass',
-    }).connect(this.nodes.masterLimiter)
-
-    this.synths.hihat = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: {
-            attack: 0.001,
-            decay: 0.03,
-            sustain: 0,
-        },
-        volume: -8,
-          //send dry signal to HPF effect
-        }).connect(this.nodes.hihatHPF)
-
-    // --- Bass ---
-    // volume: -12 matches the instrument's relative weight in the mix.
-    // Without this, the triangle oscillator hits the limiter at near-0 dBFS,
-    // causing limiter pumping that sounds like distortion on bass-heavy patterns.
-    // maxPolyphony: 4 caps voice count — bass notes overlap at fast tempos
-    // (sustain + release = 0.75s) and unbounded polyphony causes them to sum
-    // into the limiter on every step, compounding the loudness problem.
-    this.synths.bass = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 4,
-      oscillator: { type: 'triangle' },
-      envelope: {
-        attack: 0.01,
-        decay: 0.1,
-        sustain: 0.5,
-        release: 0.5,
-      },
-      volume: -10,
-    }).connect(this.nodes.masterLimiter)
-
-    // --- Keys (EP) ---
-    // Slow chorus for classic Rhodes shimmer — stored in this.nodes for disposal
-    this.nodes.keysChorus = new Tone.Chorus({
-      frequency: 3.5,  // slow, warm modulation
-      delayTime: 0.5,
-      depth: 0.4,
-      wet: 0.4,
-      // the start method is needed to trigger the LFO in Tone.Chorus
-    }).connect(this.nodes.masterLimiter).start()
-
-    // fatsine layering 3 detuned sines — mimics the soft tine character of a Rhodes
-    // maxPolyphony: 8 — keys chord is 4 notes; 8 allows one overlap before voice stealing
-    this.synths.keys = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 4,
-      oscillator: {
-        type: 'fatsine',
-        count: 3,   // 3 slightly detuned sine voices layered
-        spread: 20, // subtle detune spread in cents
-      },
-      envelope: {
-        attack: 0.02,  // slight bloom
-        decay: 0.4,    // longer decay for EP character
-        sustain: 0.2,
-        release: 0.8,  // ring out naturally
-      },
-      volume: -8,
-      //send dry signal to chorus
-    }).connect(this.nodes.keysChorus)
-    
-      // --- Guitar ---
-    this.nodes.guitarDistortion = new Tone.Distortion(0.14).connect(this.nodes.masterLimiter)
-
-    // maxPolyphony: 4 — guitar is 2-note dyad; 4 allows one overlap before voice stealing
-    this.synths.guitar = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 2,
-      oscillator: {
-        type: 'fatsine',
-        count: 2,   // layered voices to add richness
-        spread: 15,
-      },
-      envelope: {
-      attack: 0, // Tightened for the initial click
-      decay: 0.1,    
-      sustain: 0.2,
-      release: 0.3,  
-    },
-      volume: -8,
-      //send dry signal to distortion
-    }).connect(this.nodes.guitarDistortion)
+    await Promise.all(loadPromises)
   }
 
   /**
    * Trigger a sequencer sound by instrument name.
    * Accepts an optional scheduled `time` from the Tone.js audio clock.
    * Falls back to Tone.now() for manual/preview triggers (e.g. pad clicks).
+   *
+   * @param {string} instrumentName
+   * @param {number} [time] - scheduled Tone.js time
+   * @param {number|null} [maxDuration] - optional cap (seconds) on playback length.
+   *   Passed by the sequencer as the current step interval, so a sample's natural
+   *   length can never outlast the step it was triggered on and pile up against
+   *   the next retrigger at fast tempos. Manual/preview triggers omit this and
+   *   play the sample to its natural length.
    */
-  triggerInstrument(instrumentName, time = Tone.now()) {
+  triggerInstrument(instrumentName, time = Tone.now(), maxDuration = null) {
     if (!this.isInitialized) return
 
-    switch (instrumentName) {
-      case 'kick':
-        // 0.5s absolute — MembraneSynth ignores sustain so duration = decay runway
-        this.synths.kick.triggerAttackRelease('C1', 0.5, time)
-        break
-      case 'snare':
-        // Both layers triggered at the same scheduled time.
-        // '16n' / '32n' are intentionally note-relative — snare transients
-        // are <50ms at any musical tempo so tempo-scaling is inaudible here.
-        this.synths.snare.triggerAttackRelease('16n', time)
-        this.synths.snareBody.triggerAttackRelease(['D2', 'E3'], '32n', time)
-        break
-      case 'hihat':
-        this.synths.hihat.triggerAttackRelease('16n', time)
-        break
-      case 'bass':
-        this.synths.bass.triggerAttackRelease('C2', 0.25, time)
-        break
-      case 'keys':
-        // Fixed absolute duration (seconds) — not a note value like '8n'.
-        // Note values scale with BPM: at 60 BPM '8n' = 500ms; at 180 BPM = 167ms.
-        // Using seconds keeps the EP bloom and ring-out consistent at all tempi.
-        this.synths.keys.triggerAttackRelease(['G3', 'Bb3', 'D4', 'F4'], 0.35, time)
-        break
-      case 'guitar':
-        // Same rationale: fixed seconds for a consistent pluck shape at any BPM.
-        this.synths.guitar.triggerAttackRelease(['G4', 'G5'], 0.18, time)
-        break
-      default:
-        console.warn(`Instrument not found: ${instrumentName}`)
-        break
+    const player = this.synths[instrumentName]
+    if (!player) {
+      console.warn(`Instrument not found: ${instrumentName}`)
+      return
     }
+    if (!player.loaded) {
+      console.warn(`[DrumMachine] Sample not yet loaded for "${instrumentName}", skipping trigger`)
+      return
+    }
+
+    // Cut off any still-playing previous hit before retriggering (mono one-shot
+    // behavior). The player's fadeOut ramps amplitude down over FADE_OUT_SECONDS
+    // instead of hard-stopping, avoiding an audible click/pop on the cutoff.
+    if (player.state === 'started') {
+      player.stop(time + 0.001)
+    }
+    player.start(time)
+
+    // Tempo-aware safeguard: cap playback to maxDuration when the sample is
+    // longer than the step it was triggered on. Uses the same fadeOut ramp,
+    // so shortening a long sample at fast tempos still sounds clean.
+    if (maxDuration && player.buffer?.duration > maxDuration) {
+      player.stop(time + maxDuration)
+    }
+  }
+
+  /**
+   * Set the volume (in dB) for a single instrument's sample player.
+   * No loudness spec exists yet for the samples — this is the hook for tuning
+   * per-instrument levels later without touching playback logic.
+   */
+  setInstrumentVolume(instrumentName, volumeDb) {
+    const player = this.synths[instrumentName]
+    if (player) {
+      player.volume.value = volumeDb
+    }
+  }
+
+  /**
+   * Get the current volume (in dB) for an instrument's sample player.
+   */
+  getInstrumentVolume(instrumentName) {
+    return this.synths[instrumentName]?.volume.value ?? null
   }
 
   /**
@@ -335,11 +279,17 @@ class DrumMachine {
           this.notifyStepChange(step)
         }, time)
 
+        // Recomputed every step so it tracks the *current* BPM if tempo changes
+        // mid-playback — this is the tempo-aware max-duration cap passed into
+        // triggerInstrument() below.
+        const stepDuration = Tone.Time(noteValue).toSeconds()
+        // const stepDuration = 0.1
+
         // Trigger active instruments using the scheduled time directly —
         // no secondary schedule() wrapper needed inside a Sequence callback
         Object.keys(this.gridState).forEach((instrumentName) => {
           if (this.gridState[instrumentName][step]) {
-            this.triggerInstrument(instrumentName, time)
+            this.triggerInstrument(instrumentName, time, stepDuration)
           }
         })
       },
@@ -440,7 +390,7 @@ class DrumMachine {
   }
 
   /**
-   * Dispose and clean up all synths and routing nodes.
+   * Dispose and clean up all sample players and routing nodes.
    * Safe to call multiple times. After dispose(), initialize() can be called
    * again to rebuild the graph from scratch.
    */
@@ -456,7 +406,7 @@ class DrumMachine {
       this.sequence.dispose()
       this.sequence = null
     }
-    Object.values(this.synths).forEach((synth) => synth?.dispose())
+    Object.values(this.synths).forEach((player) => player?.dispose())
     Object.values(this.nodes).forEach((node) => node?.dispose())
     // Reset refs so disposed nodes are not double-disposed on a second call
     Object.keys(this.synths).forEach((k) => (this.synths[k] = null))
