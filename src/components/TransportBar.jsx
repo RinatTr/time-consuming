@@ -243,7 +243,7 @@ export default function TransportBar() {
       <BarCountSelector
         barCount={barCount}
         onSelectBarCount={handleSelectBarCount}
-        isLocked={isPlaying}
+        isPlaying={isPlaying}
         handlebarCountDecrease={handleBarCountDecrease}
         handlebarCountIncrease={handleBarCountIncrease}
       />

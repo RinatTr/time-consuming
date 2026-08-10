@@ -141,6 +141,12 @@
   transition: color 0.12s;
 }
 
+.arrow-btn:disabled, .arrow-btn:disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
 .arrow-btn:hover { color: var(--text-primary); }
 
 /* Transport buttons */
