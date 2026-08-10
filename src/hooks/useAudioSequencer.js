@@ -3,9 +3,92 @@ import { generatePhrase } from '../audio/phraseGenerator'
 import { PARTS_LIBRARY } from '../audio/partsLibrary'
 import { getNoteValue } from '../audio/phraseCalculator'
 
+const INSTRUMENT_IDS = ['kick', 'snare', 'hihat', 'bass', 'keys', 'guitar']
+
+const DEFAULT_CONFIG = {
+  barCount: 1,
+  groupingOption: 3,
+  hostMeter: '4/4',
+  subdivision: '16th',
+}
+
+const DEFAULT_ROLE_ASSIGNMENT = {
+  kick: 'host',
+  snare: 'host',
+  hihat: 'guest',
+  bass: 'host',
+  keys: 'guest',
+  guitar: 'guest',
+}
+
+/**
+ * Generate both role variants for every instrument for one musical config.
+ * These generated patterns become the mutable in-memory working copies for
+ * the current page session.
+ */
+function createPatternSession(config, roleAssignment) {
+  const allHostRoles = Object.fromEntries(
+    INSTRUMENT_IDS.map((instrumentId) => [instrumentId, 'host'])
+  )
+
+  const allGuestRoles = Object.fromEntries(
+    INSTRUMENT_IDS.map((instrumentId) => [instrumentId, 'guest'])
+  )
+
+  const hostResult = generatePhrase(
+    config,
+    PARTS_LIBRARY,
+    allHostRoles
+  )
+
+  const guestResult = generatePhrase(
+    config,
+    PARTS_LIBRARY,
+    allGuestRoles
+  )
+
+  const workingPatterns = {}
+  const activePatterns = {}
+
+  INSTRUMENT_IDS.forEach((instrumentId) => {
+    workingPatterns[instrumentId] = {
+      host: [...hostResult.patterns[instrumentId]],
+      guest: [...guestResult.patterns[instrumentId]],
+    }
+
+    const activeRole = roleAssignment[instrumentId] || 'host'
+
+    activePatterns[instrumentId] = [
+      ...workingPatterns[instrumentId][activeRole],
+    ]
+  })
+
+  return {
+    workingPatterns,
+    activePatterns,
+    groupings: hostResult.groupings,
+    stepsPerBar: hostResult.stepsPerBar,
+  }
+}
+
+function loadPatternsIntoDrumMachine(drumMachine, patterns) {
+  Object.entries(patterns).forEach(([instrumentId, pattern]) => {
+    drumMachine.setGridPattern(instrumentId, pattern)
+  })
+}
+
 /**
  * useAudioSequencer - Custom hook for managing drum machine state and playback
- * Handles initialization, playback control, BPM updates, bar selection, and parametric phrase generation
+ * Handles initialization, playback control, BPM updates, bar selection,
+ * parametric phrase generation, and per-role working pattern persistence.
+ *
+ * Pattern persistence rules:
+ * - Every instrument has a separate Host and Guest working pattern.
+ * - Nub edits mutate only the currently active role's working pattern.
+ * - Role toggles restore the saved working pattern for the new role.
+ * - Play/Stop never regenerate patterns.
+ * - Config changes reset all Host/Guest working patterns to generated defaults.
+ * - Refresh/remount naturally resets the in-memory working patterns.
  *
  * @param {DrumMachine} drumMachine - The DrumMachine instance owned by AudioSequencerProvider.
  *   Passed as a parameter (not imported) so the provider controls the instance lifecycle,
@@ -16,215 +99,508 @@ export function useAudioSequencer(drumMachine) {
   const [currentStep, setCurrentStep] = useState(0)
   const [bpm, setBpm] = useState(100)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [barCount, setBarCount] = useState(1)
+
+  const [barCount, setBarCount] = useState(
+    DEFAULT_CONFIG.barCount
+  )
+
   const [activeBarIndex, setActiveBarIndex] = useState(0)
-  
-  // New parametric state
-  const [groupingOption, setGroupingOption] = useState(3)
-  const [hostMeter, setHostMeter] = useState('4/4')
-  const [subdivision, setSubdivision] = useState('16th')
-  const [roleAssignment, setRoleAssignment] = useState({
-    kick: 'host',
-    snare: 'host',
-    hihat: 'guest',
-    bass: 'host',
-    keys: 'guest',
-    guitar: 'guest',
-  })
-  
-  // Instrument selection and pattern editing state
-  const [selectedInstrument, setSelectedInstrument] = useState(null)
-  const [patterns, setPatterns] = useState({
-    kick: new Array(80).fill(false),
-    snare: new Array(80).fill(false),
-    hihat: new Array(80).fill(false),
-    bass: new Array(80).fill(false),
-    keys: new Array(80).fill(false),
-    guitar: new Array(80).fill(false),
-  })
+
+  // Parametric state
+  const [groupingOption, setGroupingOption] = useState(
+    DEFAULT_CONFIG.groupingOption
+  )
+
+  const [hostMeter, setHostMeter] = useState(
+    DEFAULT_CONFIG.hostMeter
+  )
+
+  const [subdivision, setSubdivision] = useState(
+    DEFAULT_CONFIG.subdivision
+  )
+
+  const [roleAssignment, setRoleAssignment] = useState(
+    DEFAULT_ROLE_ASSIGNMENT
+  )
+
+  // Keep synchronous refs for callbacks that must update the audio engine
+  // immediately, without waiting for React state to commit.
+  const roleAssignmentRef = useRef(DEFAULT_ROLE_ASSIGNMENT)
+  const configRef = useRef(DEFAULT_CONFIG)
+  const bpmRef = useRef(100)
+
+  // Build the initial display + both role-specific working copies immediately.
+  // No Tone/audio initialization is needed for this.
+  const initialPatternSessionRef = useRef(null)
+
+  if (initialPatternSessionRef.current === null) {
+    initialPatternSessionRef.current = createPatternSession(
+      DEFAULT_CONFIG,
+      DEFAULT_ROLE_ASSIGNMENT
+    )
+  }
+
+  const initialPatternSession =
+    initialPatternSessionRef.current
+
+  // Canonical session memory for Host/Guest edits.
+  //
+  // A ref is used so rapid nub edits and role changes always see the latest
+  // working copy synchronously rather than depending on React's async state
+  // update timing.
+  const workingPatternsRef = useRef(
+    initialPatternSession.workingPatterns
+  )
+
+  // `patterns` contains only the currently active role pattern for each
+  // instrument. RhythmGrid renders from this object.
+  const [patterns, setPatterns] = useState(
+    initialPatternSession.activePatterns
+  )
+
+  const patternsRef = useRef(
+    initialPatternSession.activePatterns
+  )
+
+  // Groupings and steps tracking for grid rendering and playback.
+  const [currentGroupings, setCurrentGroupings] = useState(
+    initialPatternSession.groupings
+  )
+
+  const [currentStepsPerBar, setCurrentStepsPerBar] =
+    useState(initialPatternSession.stepsPerBar)
+
+  const currentStepsPerBarRef = useRef(
+    initialPatternSession.stepsPerBar
+  )
+
+  // Instrument selection
+  const [selectedInstrument, setSelectedInstrument] =
+    useState(null)
+
+  // Prevent duplicate async audio initialization while samples are loading.
+  const initializationPromiseRef = useRef(null)
+
+  // The initial pattern session already corresponds to the initial config,
+  // so the config-reset effect should only run after an actual config change.
+  const didMountConfigEffectRef = useRef(false)
 
   /**
-   * Toggle instrument selection (select if not selected, deselect if already selected)
+   * Toggle instrument selection
+   * Select if not selected, deselect if already selected.
    */
   const selectInstrument = useCallback((id) => {
-    setSelectedInstrument(prev => prev === id ? null : id)
+    setSelectedInstrument((prev) =>
+      prev === id ? null : id
+    )
   }, [])
-  
-  useEffect(() => {
-    if (!isInitialized) {
-      //initialize for rhythm grid to display on first load
-      initializeDisplay()
-    }
-  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment])
-
-  const initializeDisplay = async () => {
-    if (isInitialized) return
-    
-    const config = { barCount, groupingOption, hostMeter, subdivision }
-    const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
-    
-    setCurrentGroupings(result.groupings)
-    setCurrentStepsPerBar(result.stepsPerBar)
-    setPatterns(result.patterns)
-  } 
-
-  // Groupings and steps tracking and defaults for grid module rendering
-  const [currentGroupings, setCurrentGroupings] = useState({host: [], guest: []})
-  const [currentStepsPerBar, setCurrentStepsPerBar] = useState(16)
-  
-  const initializingRef = useRef(false)
 
   // DEBUG: Log all state updates
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log(
         `[useAudioSequencer STATE] barCount=${barCount}, activeBarIndex=${activeBarIndex}, ` +
-        `isPlaying=${isPlaying}, grouping=${groupingOption}, meter=${hostMeter}, subdivision=${subdivision}`
+          `isPlaying=${isPlaying}, grouping=${groupingOption}, meter=${hostMeter}, subdivision=${subdivision}`
       )
     }
-  }, [barCount, activeBarIndex, isPlaying, groupingOption, hostMeter, subdivision])
+  }, [
+    barCount,
+    activeBarIndex,
+    isPlaying,
+    groupingOption,
+    hostMeter,
+    subdivision,
+  ])
 
+  /**
+   * Initialize Tone/audio only.
+   *
+   * Critically, this does NOT generate a new phrase.
+   *
+   * It loads the already-current working patterns, preserving edits made
+   * before the first Play.
+   */
   const initializeAudio = async () => {
-    if (initializingRef.current || isInitialized) return
+    if (isInitialized) return
 
-    initializingRef.current = true
-    try {
-      await drumMachine.initialize()
-      drumMachine.setBPM(bpm)
-      
-      // Generate initial phrase with default config
-      const config = { barCount, groupingOption, hostMeter, subdivision }
-      const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
-      
-      Object.entries(result.patterns).forEach(([id, pattern]) => {
-        drumMachine.setGridPattern(id, pattern)
-      })
-      setPatterns(result.patterns)
-      
-      drumMachine.setTimeSignature(hostMeter)
-      setCurrentGroupings(result.groupings)
-      setCurrentStepsPerBar(result.stepsPerBar)
-      
-      setIsInitialized(true)
-    } catch (error) {
-      console.error('Failed to initialize audio:', error)
-      initializingRef.current = false
+    if (initializationPromiseRef.current) {
+      await initializationPromiseRef.current
+      return
     }
+
+    initializationPromiseRef.current = (async () => {
+      try {
+        await drumMachine.initialize()
+
+        drumMachine.setBPM(bpmRef.current)
+
+        loadPatternsIntoDrumMachine(
+          drumMachine,
+          patternsRef.current
+        )
+
+        drumMachine.setTimeSignature(
+          configRef.current.hostMeter
+        )
+
+        setIsInitialized(true)
+      } catch (error) {
+        console.error(
+          'Failed to initialize audio:',
+          error
+        )
+
+        throw error
+      } finally {
+        initializationPromiseRef.current = null
+      }
+    })()
+
+    await initializationPromiseRef.current
   }
 
   /**
-   * Regeneration effect: when config or role assignment changes,
-   * regenerate the phrase and load it into DrumMachine.
+   * Config changes are the only regeneration/reset boundary after page load.
+   *
+   * Any bar count, guest grouping, host meter, or subdivision change discards
+   * every saved Host/Guest edit for every instrument and creates fresh defaults.
+   *
+   * Role assignment itself is intentionally NOT a dependency here.
+   * Role changes restore saved working patterns instead of regenerating them.
    */
   useEffect(() => {
-    if (!isInitialized) return
+    if (!didMountConfigEffectRef.current) {
+      didMountConfigEffectRef.current = true
+      return
+    }
 
-    const config = { barCount, groupingOption, hostMeter, subdivision }
-    const result = generatePhrase(config, PARTS_LIBRARY, roleAssignment)
+    const config = {
+      barCount,
+      groupingOption,
+      hostMeter,
+      subdivision,
+    }
 
-    Object.entries(result.patterns).forEach(([id, pattern]) => {
-      drumMachine.setGridPattern(id, pattern)
-    })
-    setPatterns(result.patterns)
+    configRef.current = config
 
-    drumMachine.setTimeSignature(hostMeter)
-    setCurrentGroupings(result.groupings)
-    setCurrentStepsPerBar(result.stepsPerBar)
-  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment, isInitialized])
+    const nextSession = createPatternSession(
+      config,
+      roleAssignmentRef.current
+    )
+
+    workingPatternsRef.current =
+      nextSession.workingPatterns
+
+    patternsRef.current =
+      nextSession.activePatterns
+
+    currentStepsPerBarRef.current =
+      nextSession.stepsPerBar
+
+    setPatterns(nextSession.activePatterns)
+    setCurrentGroupings(nextSession.groupings)
+    setCurrentStepsPerBar(nextSession.stepsPerBar)
+
+    // If audio was initialized already, immediately replace the engine's
+    // active grids with the fresh defaults for the new config.
+    if (drumMachine.isInitialized) {
+      loadPatternsIntoDrumMachine(
+        drumMachine,
+        nextSession.activePatterns
+      )
+
+      drumMachine.setTimeSignature(hostMeter)
+    }
+  }, [
+    barCount,
+    groupingOption,
+    hostMeter,
+    subdivision,
+    drumMachine,
+  ])
 
   /**
-   * Navigate to a specific bar (only when stopped)
+   * Navigate to a specific bar
+   * Only allowed when stopped.
    */
   const goToBar = useCallback(
     (barIndex) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`)
+        console.log(
+          `[goToBar] called with barIndex=${barIndex}, isPlaying=${isPlaying}, barCount=${barCount}`
+        )
       }
-      if (isPlaying || barIndex < 0 || barIndex >= barCount) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${barIndex >= 0 && barIndex < barCount}`)
+
+      if (
+        isPlaying ||
+        barIndex < 0 ||
+        barIndex >= barCount
+      ) {
+        if (
+          process.env.NODE_ENV === 'development'
+        ) {
+          console.log(
+            `[goToBar] BLOCKED: isPlaying=${isPlaying}, barIndex in range=${
+              barIndex >= 0 &&
+              barIndex < barCount
+            }`
+          )
         }
+
         return
       }
+
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[goToBar] Setting activeBarIndex to ${barIndex}`)
+        console.log(
+          `[goToBar] Setting activeBarIndex to ${barIndex}`
+        )
       }
+
       setActiveBarIndex(barIndex)
     },
     [isPlaying, barCount]
   )
 
   /**
-   * Start playback
+   * Start playback.
+   *
+   * Play never regenerates or resets patterns.
    */
   const play = async () => {
     if (!isInitialized) {
       await initializeAudio()
     }
-    const stepCount = barCount * currentStepsPerBar
-    const noteValue = getNoteValue(subdivision)
+
+    const activeConfig = configRef.current
+
+    const stepCount =
+      activeConfig.barCount *
+      currentStepsPerBarRef.current
+
+    const noteValue = getNoteValue(
+      activeConfig.subdivision
+    )
+
     drumMachine.play(stepCount, noteValue)
+
     setIsPlaying(true)
   }
 
   /**
-   * Stop playback
+   * Stop playback.
+   *
+   * Stop resets transport position only.
+   * Patterns are untouched.
    */
   const stop = () => {
     drumMachine.stop()
+
     setIsPlaying(false)
     setCurrentStep(0)
     setActiveBarIndex(0)
   }
 
   /**
-   * Update BPM
+   * Update BPM.
    */
   const updateBPM = (newBpm) => {
-    // BPM Clamped between 0 and 260 in UI
+    // BPM clamped between 0 and 260 in UI.
+    bpmRef.current = newBpm
+
     drumMachine.setBPM(newBpm)
+
     setBpm(newBpm)
   }
 
   /**
-   * Set grid cell active/inactive
+   * Set one grid cell active/inactive.
+   *
+   * The edit is written to:
+   * 1. the current instrument+role working copy,
+   * 2. the active React display pattern,
+   * 3. DrumMachine.gridState for immediate playback effect.
    */
-  const setGridCell = useCallback((instrumentName, step, isActive) => {
-    drumMachine.setGridCell(instrumentName, step, isActive)
-    setPatterns(prev => {
-      const updated = [...prev[instrumentName]]
-      updated[step] = isActive
-      return { ...prev, [instrumentName]: updated }
-    })
-  }, [drumMachine])
+  const setGridCell = useCallback(
+    (
+      instrumentName,
+      step,
+      isActive
+    ) => {
+      const role =
+        roleAssignmentRef.current[
+          instrumentName
+        ]
+
+      const instrumentWorkingPatterns =
+        workingPatternsRef.current[
+          instrumentName
+        ]
+
+      if (
+        !role ||
+        !instrumentWorkingPatterns?.[role]
+      ) {
+        return
+      }
+
+      const updatedRolePattern = [
+        ...instrumentWorkingPatterns[role],
+      ]
+
+      if (
+        step < 0 ||
+        step >= updatedRolePattern.length
+      ) {
+        return
+      }
+
+      updatedRolePattern[step] = isActive
+
+      workingPatternsRef.current = {
+        ...workingPatternsRef.current,
+
+        [instrumentName]: {
+          ...instrumentWorkingPatterns,
+
+          [role]: updatedRolePattern,
+        },
+      }
+
+      const nextPatterns = {
+        ...patternsRef.current,
+
+        [instrumentName]: [
+          ...updatedRolePattern,
+        ],
+      }
+
+      patternsRef.current = nextPatterns
+
+      setPatterns(nextPatterns)
+
+      // Works both before and after Tone initialization.
+      //
+      // Before first Play, initializeAudio() will still load the complete
+      // active pattern set, so a pre-Play edit cannot be lost.
+      drumMachine.setGridCell(
+        instrumentName,
+        step,
+        isActive
+      )
+    },
+    [drumMachine]
+  )
 
   /**
-   * Get grid cell state
+   * Get grid cell state from the hook's active working pattern.
+   *
+   * This is the source of truth even before the audio engine has initialized.
    */
-  const getGridCell = (instrumentName, step) => {
-    return drumMachine.getGridCell(instrumentName, step)
+  const getGridCell = (
+    instrumentName,
+    step
+  ) => {
+    return (
+      patternsRef.current[
+        instrumentName
+      ]?.[step] ?? false
+    )
   }
 
   /**
-   * Set entire pattern for an instrument
+   * Replace the entire active pattern for an instrument.
+   *
+   * The replacement belongs to the instrument's currently assigned role.
    */
-  const setPattern = (instrumentName, pattern) => {
-    drumMachine.setGridPattern(instrumentName, pattern)
+  const setPattern = (
+    instrumentName,
+    pattern
+  ) => {
+    const role =
+      roleAssignmentRef.current[
+        instrumentName
+      ]
+
+    const instrumentWorkingPatterns =
+      workingPatternsRef.current[
+        instrumentName
+      ]
+
+    if (
+      !role ||
+      !instrumentWorkingPatterns?.[role]
+    ) {
+      return
+    }
+
+    const nextPattern = [...pattern]
+
+    workingPatternsRef.current = {
+      ...workingPatternsRef.current,
+
+      [instrumentName]: {
+        ...instrumentWorkingPatterns,
+
+        [role]: nextPattern,
+      },
+    }
+
+    const nextPatterns = {
+      ...patternsRef.current,
+
+      [instrumentName]: [
+        ...nextPattern,
+      ],
+    }
+
+    patternsRef.current = nextPatterns
+
+    setPatterns(nextPatterns)
+
+    drumMachine.setGridPattern(
+      instrumentName,
+      nextPattern
+    )
   }
 
   /**
-   * Get entire pattern for an instrument
+   * Get a copy of the active pattern for an instrument.
    */
-  const getPattern = (instrumentName) => {
-    return drumMachine.getGridPattern(instrumentName)
+  const getPattern = (
+    instrumentName
+  ) => {
+    return patternsRef.current[
+      instrumentName
+    ]
+      ? [
+          ...patternsRef.current[
+            instrumentName
+          ],
+        ]
+      : []
   }
 
   /**
-   * Update bar count (blocked during playback)
+   * Update bar count.
+   *
+   * Blocked during playback.
+   * The config-reset effect regenerates all Host/Guest working patterns.
    */
   const updateBarCount = useCallback(
     (n) => {
-      if (isPlaying || n < 1 || n > 4) return
+      if (
+        isPlaying ||
+        n < 1 ||
+        n > 4
+      ) {
+        return
+      }
+
+      configRef.current = {
+        ...configRef.current,
+        barCount: n,
+      }
+
       setBarCount(n)
       setActiveBarIndex(0)
     },
@@ -232,68 +608,165 @@ export function useAudioSequencer(drumMachine) {
   )
 
   /**
-   * Update grouping option (blocked during playback)
+   * Update grouping option.
+   *
+   * Blocked during playback.
+   * The config-reset effect regenerates all Host/Guest working patterns.
    */
-  const updateGroupingOption = useCallback(
-    (n) => {
-      if (isPlaying) return
-      setGroupingOption(n)
-    },
-    [isPlaying]
-  )
+  const updateGroupingOption =
+    useCallback(
+      (n) => {
+        if (isPlaying) return
+
+        configRef.current = {
+          ...configRef.current,
+          groupingOption: n,
+        }
+
+        setGroupingOption(n)
+      },
+      [isPlaying]
+    )
 
   /**
-   * Update host meter (blocked during playback)
+   * Update host meter.
+   *
+   * Blocked during playback.
+   * The config-reset effect regenerates all Host/Guest working patterns.
    */
   const updateHostMeter = useCallback(
     (meter) => {
       if (isPlaying) return
+
+      configRef.current = {
+        ...configRef.current,
+        hostMeter: meter,
+      }
+
       setHostMeter(meter)
     },
     [isPlaying]
   )
 
   /**
-   * Update subdivision (blocked during playback)
+   * Update subdivision.
+   *
+   * Blocked during playback.
+   * The config-reset effect regenerates all Host/Guest working patterns.
    */
   const updateSubdivision = useCallback(
     (sub) => {
       if (isPlaying) return
+
+      configRef.current = {
+        ...configRef.current,
+        subdivision: sub,
+      }
+
       setSubdivision(sub)
     },
     [isPlaying]
   )
 
   /**
-   * Update a single instrument's role (blocked during playback)
+   * Update one instrument's role.
+   *
+   * Role changes are allowed during playback.
+   *
+   * They never regenerate patterns.
+   *
+   * Instead, the saved working pattern for the destination role immediately
+   * becomes both the displayed pattern and the DrumMachine pattern.
    */
   const setInstrumentRole = useCallback(
-    (instrumentId, role) => {
-      setRoleAssignment((prev) => ({ ...prev, [instrumentId]: role }))
+    (
+      instrumentId,
+      role
+    ) => {
+      if (
+        role !== 'host' &&
+        role !== 'guest'
+      ) {
+        return
+      }
+
+      const savedPattern =
+        workingPatternsRef.current[
+          instrumentId
+        ]?.[role]
+
+      if (!savedPattern) return
+
+      const nextRoleAssignment = {
+        ...roleAssignmentRef.current,
+
+        [instrumentId]: role,
+      }
+
+      // Update ref synchronously so a nub click immediately following the
+      // role switch belongs to the new role.
+      roleAssignmentRef.current =
+        nextRoleAssignment
+
+      setRoleAssignment(
+        nextRoleAssignment
+      )
+
+      const nextPatterns = {
+        ...patternsRef.current,
+
+        [instrumentId]: [
+          ...savedPattern,
+        ],
+      }
+
+      patternsRef.current = nextPatterns
+
+      setPatterns(nextPatterns)
+
+      // Immediate engine swap:
+      //
+      // Playback continues and subsequent sequencer evaluations read the
+      // newly selected role pattern.
+      drumMachine.setGridPattern(
+        instrumentId,
+        savedPattern
+      )
     },
-    []
+    [drumMachine]
   )
 
-  // Memoize step change handler to prevent re-creating it on every render
-  const handleStepChange = useCallback((globalStep) => {
-    setCurrentStep(globalStep)
+  // Memoize step change handler to prevent re-creating it on every render.
+  const handleStepChange = useCallback(
+    (globalStep) => {
+      setCurrentStep(globalStep)
 
-    // Auto-follow: update activeBarIndex during playback
-    const newBarIndex = Math.floor(globalStep / currentStepsPerBar)
-    setActiveBarIndex(newBarIndex)
-  }, [currentStepsPerBar])
+      // Auto-follow: update activeBarIndex during playback.
+      const newBarIndex = Math.floor(
+        globalStep /
+          currentStepsPerBar
+      )
 
-  // Subscribe to step changes for playhead tracking and auto-follow during playback
+      setActiveBarIndex(newBarIndex)
+    },
+    [currentStepsPerBar]
+  )
+
+  // Subscribe to step changes for playhead tracking and auto-follow.
   useEffect(() => {
-    drumMachine.onStepChange(handleStepChange)
+    drumMachine.onStepChange(
+      handleStepChange
+    )
 
     return () => {
-      drumMachine.offStepChange(handleStepChange)
+      drumMachine.offStepChange(
+        handleStepChange
+      )
     }
   }, [drumMachine, handleStepChange])
 
-  // Note: DrumMachine disposal is handled by AudioSequencerProvider's useEffect cleanup,
-  // not here — the hook does not own the instance lifetime.
+  // DrumMachine disposal is handled by AudioSequencerProvider's cleanup.
+  // The hook does not own the instance lifetime.
 
   return {
     // State
@@ -334,7 +807,7 @@ export function useAudioSequencer(drumMachine) {
     getPattern,
     selectInstrument,
 
-    // Direct access to drum machine instance (if needed by consumers)
+    // Direct access to DrumMachine
     drumMachine,
   }
 }
