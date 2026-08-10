@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import { BarCountSelector } from './BarCountSelector'
 import './TransportBar.css'
@@ -65,40 +65,68 @@ export default function TransportBar() {
     updateBPM(bpm - 1)
   }, [bpm, updateBPM])
 
-  const handleBpmInputChange = useCallback(
-    (e) => {
-      const value = e.target.value
-      // Allow only numeric input
-      if (!/^\d*$/.test(value)) return
+  // Local, uncommitted text for the BPM field. Lets the user type freely
+  // (e.g. "1" on the way to "120") without pushing every partial keystroke
+  // to the audio engine.
+  const [bpmInputValue, setBpmInputValue] = useState(String(bpm))
 
-      // Allow empty string for user to clear and type
+  // Keep the field in sync when bpm changes from elsewhere (arrow buttons,
+  // or the engine itself) — only runs when the external bpm value actually
+  // changes, so it never fights the user mid-keystroke.
+  useEffect(() => {
+    setBpmInputValue(String(bpm))
+  }, [bpm])
+
+  const commitBpmValue = useCallback(
+    (value) => {
+      // If empty on commit, reset to current BPM
       if (value === '') {
-        e.target.value = ''
+        setBpmInputValue(String(bpm))
         return
       }
       let numValue = parseInt(value, 10)
       // Clamp value between 0 and 260
       numValue = Math.min(Math.max(numValue, 0), 260)
       updateBPM(numValue)
-    },
-    [updateBPM]
-  )
-  //blur means when the input loses focus, so if the user clears the input and clicks away, we reset it to the current BPM
-  const handleBpmInputBlur = useCallback(
-    (e) => {
-      const value = e.target.value
-      // If empty on blur, reset to current BPM
-      if (value === '') {
-        e.target.value = bpm
-        return
-      }
-
-      let numValue = parseInt(value, 10)
-      numValue = Math.min(Math.max(numValue, 0), 260)
-      updateBPM(numValue)
+      setBpmInputValue(String(numValue))
     },
     [bpm, updateBPM]
   )
+
+  const handleBpmInputChange = useCallback(
+    (e) => {
+      const value = e.target.value
+      // Allow only numeric input
+      if (!/^\d*$/.test(value)) return
+      // Just track what's typed — don't touch the engine until commit
+      // (Enter or blur).
+      setBpmInputValue(value)
+    },
+    []
+  )
+
+  // blur means when the input loses focus, so if the user clears the input
+  // and clicks away, we reset it to the current BPM; otherwise we commit
+  const handleBpmInputBlur = useCallback(
+    (e) => {
+      commitBpmValue(e.target.value)
+    },
+    [commitBpmValue]
+  )
+
+  // Enter commits the typed value and blurs (dismisses mobile keyboard),
+  // both while playing and while stopped
+  const handleBpmInputKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        commitBpmValue(e.target.value)
+        e.target.blur()
+      }
+    },
+    [commitBpmValue]
+  )
+
   const handleBarCountIncrease = useCallback(() => {
     if (barCount >= 4) return
     updateBarCount(barCount + 1)
@@ -206,10 +234,12 @@ export default function TransportBar() {
         <input
           type="text"
           className="bpm-value"
-          value={bpm}
+          value={bpmInputValue}
           onChange={handleBpmInputChange}
           onBlur={handleBpmInputBlur}
+          onKeyDown={handleBpmInputKeyDown}
           inputMode="numeric"
+          enterKeyHint="done"
           maxLength="3"
         />
         <div className="bpm-arrows">
