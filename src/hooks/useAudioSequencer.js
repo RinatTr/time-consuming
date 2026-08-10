@@ -90,7 +90,7 @@ export function useAudioSequencer(drumMachine) {
     initializingRef.current = true
     try {
       await drumMachine.initialize()
-      setBpm(drumMachine.getBPM())
+      drumMachine.setBPM(bpm)
       
       // Generate initial phrase with default config
       const config = { barCount, groupingOption, hostMeter, subdivision }
@@ -113,11 +113,10 @@ export function useAudioSequencer(drumMachine) {
   }
 
   /**
-   * Regeneration effect: when config or role assignment changes (and not playing),
+   * Regeneration effect: when config or role assignment changes,
    * regenerate the phrase and load it into DrumMachine.
    */
   useEffect(() => {
-    if (isPlaying) return
     if (!isInitialized) return
 
     const config = { barCount, groupingOption, hostMeter, subdivision }
@@ -131,7 +130,7 @@ export function useAudioSequencer(drumMachine) {
     drumMachine.setTimeSignature(hostMeter)
     setCurrentGroupings(result.groupings)
     setCurrentStepsPerBar(result.stepsPerBar)
-  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment, isPlaying, isInitialized])
+  }, [barCount, groupingOption, hostMeter, subdivision, roleAssignment, isInitialized])
 
   /**
    * Navigate to a specific bar (only when stopped)
@@ -270,10 +269,9 @@ export function useAudioSequencer(drumMachine) {
    */
   const setInstrumentRole = useCallback(
     (instrumentId, role) => {
-      if (isPlaying) return
       setRoleAssignment((prev) => ({ ...prev, [instrumentId]: role }))
     },
-    [isPlaying]
+    []
   )
 
   // Memoize step change handler to prevent re-creating it on every render

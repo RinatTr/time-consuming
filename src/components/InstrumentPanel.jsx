@@ -19,7 +19,7 @@ const instruments = [
 ]
 
 export default function InstrumentPanel() {
-  const { drumMachine, isPlaying, roleAssignment, setInstrumentRole, selectedInstrument, selectInstrument } = useAudioSequencerContext()
+  const { drumMachine, roleAssignment, setInstrumentRole, selectedInstrument, selectInstrument } = useAudioSequencerContext()
   const [activeInstrument, setActiveInstrument] = useState(null)
 
   const handleIconClick = async (instrumentId) => {
@@ -41,6 +41,7 @@ export default function InstrumentPanel() {
     e.stopPropagation()
     const currentRole = roleAssignment[instrumentId]
     const newRole = currentRole === 'host' ? 'guest' : 'host'
+        console.log(`Toggling role for instrument "${instrumentId}", new role: ${newRole}, current role: ${currentRole}`)
     setInstrumentRole(instrumentId, newRole)
   }
 
@@ -73,7 +74,7 @@ export default function InstrumentPanel() {
               <button
                 className={`role-toggle role-toggle--${role}`}
                 onClick={(e) => handleRoleToggle(id, e)}
-                disabled={isPlaying}
+               /* disabled={isPlaying}*/
                 aria-label={`Toggle ${label} role: ${role}`}
                 title={`Current: ${role}. Click to toggle.`}
               >
