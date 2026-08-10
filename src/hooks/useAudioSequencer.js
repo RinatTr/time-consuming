@@ -90,7 +90,7 @@ export function useAudioSequencer(drumMachine) {
     initializingRef.current = true
     try {
       await drumMachine.initialize()
-      setBpm(drumMachine.getBPM())
+      drumMachine.setBPM(bpm)
       
       // Generate initial phrase with default config
       const config = { barCount, groupingOption, hostMeter, subdivision }

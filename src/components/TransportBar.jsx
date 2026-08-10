@@ -76,7 +76,6 @@ export default function TransportBar() {
         e.target.value = ''
         return
       }
-
       let numValue = parseInt(value, 10)
       // Clamp value between 0 and 260
       numValue = Math.min(Math.max(numValue, 0), 260)
@@ -84,7 +83,7 @@ export default function TransportBar() {
     },
     [updateBPM]
   )
-
+  //blur means when the input loses focus, so if the user clears the input and clicks away, we reset it to the current BPM
   const handleBpmInputBlur = useCallback(
     (e) => {
       const value = e.target.value
