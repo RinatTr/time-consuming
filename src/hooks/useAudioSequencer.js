@@ -125,7 +125,6 @@ export function useAudioSequencer(drumMachine) {
     Object.entries(result.patterns).forEach(([id, pattern]) => {
       drumMachine.setGridPattern(id, pattern)
     })
-    console.log('Regenerated patterns:', result.patterns)
     setPatterns(result.patterns)
 
     drumMachine.setTimeSignature(hostMeter)
