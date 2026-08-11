@@ -35,17 +35,8 @@ function createPatternSession(config, roleAssignment) {
     INSTRUMENT_IDS.map((instrumentId) => [instrumentId, 'guest'])
   )
 
-  const hostResult = generatePhrase(
-    config,
-    PARTS_LIBRARY,
-    allHostRoles
-  )
-
-  const guestResult = generatePhrase(
-    config,
-    PARTS_LIBRARY,
-    allGuestRoles
-  )
+  const hostResult = generatePhrase(config, PARTS_LIBRARY, allHostRoles)
+  const guestResult = generatePhrase(config, PARTS_LIBRARY, allGuestRoles)
 
   const workingPatterns = {}
   const activePatterns = {}
@@ -99,12 +90,14 @@ export function useAudioSequencer(drumMachine) {
   const [currentStep, setCurrentStep] = useState(0)
   const [bpm, setBpm] = useState(100)
   const [isInitialized, setIsInitialized] = useState(false)
-
-  const [barCount, setBarCount] = useState(
-    DEFAULT_CONFIG.barCount
-  )
-
+  const [barCount, setBarCount] = useState(DEFAULT_CONFIG.barCount)
   const [activeBarIndex, setActiveBarIndex] = useState(0)
+
+  // `currentStep` is transport position; `activeBarIndex` is the displayed page.
+  // They normally track together during playback, but intentionally diverge
+  // while stopped when the user pages through bars.
+  const activeBarIndexRef = useRef(0)
+  const isPlayingRef = useRef(false)
 
   // Parametric state
   const [groupingOption, setGroupingOption] = useState(
@@ -143,11 +136,8 @@ export function useAudioSequencer(drumMachine) {
   const initialPatternSession =
     initialPatternSessionRef.current
 
-  // Canonical session memory for Host/Guest edits.
-  //
-  // A ref is used so rapid nub edits and role changes always see the latest
-  // working copy synchronously rather than depending on React's async state
-  // update timing.
+  // Canonical session memory for Host/Guest edits. A ref is used so rapid nub
+  // edits and role changes always see the latest working copy synchronously.
   const workingPatternsRef = useRef(
     initialPatternSession.workingPatterns
   )
@@ -174,15 +164,15 @@ export function useAudioSequencer(drumMachine) {
     initialPatternSession.stepsPerBar
   )
 
-  // Instrument selection
+  // Instrument selection and pattern editing state
   const [selectedInstrument, setSelectedInstrument] =
     useState(null)
 
   // Prevent duplicate async audio initialization while samples are loading.
   const initializationPromiseRef = useRef(null)
 
-  // The initial pattern session already corresponds to the initial config,
-  // so the config-reset effect should only run after an actual config change.
+  // The initial pattern session already corresponds to the initial config, so
+  // the config-reset effect should only run after an actual config change.
   const didMountConfigEffectRef = useRef(false)
 
   /**
@@ -301,6 +291,18 @@ export function useAudioSequencer(drumMachine) {
     setCurrentGroupings(nextSession.groupings)
     setCurrentStepsPerBar(nextSession.stepsPerBar)
 
+    // Keep the displayed page valid when bar count shrinks.
+    // Other config changes preserve whichever bar the user was viewing.
+    const clampedBarIndex = Math.min(
+      activeBarIndexRef.current,
+      Math.max(0, barCount - 1)
+    )
+
+    activeBarIndexRef.current =
+      clampedBarIndex
+
+    setActiveBarIndex(clampedBarIndex)
+
     // If audio was initialized already, immediately replace the engine's
     // active grids with the fresh defaults for the new config.
     if (drumMachine.isInitialized) {
@@ -356,6 +358,7 @@ export function useAudioSequencer(drumMachine) {
         )
       }
 
+      activeBarIndexRef.current = barIndex
       setActiveBarIndex(barIndex)
     },
     [isPlaying, barCount]
@@ -381,23 +384,37 @@ export function useAudioSequencer(drumMachine) {
       activeConfig.subdivision
     )
 
+    // Transport always starts from phrase step 0 after Stop.
+    //
+    // If the user was manually viewing another bar while stopped,
+    // return the display to Bar 1 immediately when playback starts.
+    // Subsequent step callbacks auto-follow.
+    activeBarIndexRef.current = 0
+    setActiveBarIndex(0)
+
     drumMachine.play(stepCount, noteValue)
 
+    isPlayingRef.current = true
     setIsPlaying(true)
   }
 
   /**
    * Stop playback.
    *
-   * Stop resets transport position only.
-   * Patterns are untouched.
+   * Transport returns to phrase step 0, but the displayed bar remains the
+   * last bar that was visible during playback.
+   *
+   * DrumMachine.stop() emits a step-0 notification, so isPlayingRef is
+   * cleared first to prevent that callback from auto-following the display
+   * back to Bar 1.
    */
   const stop = () => {
+    isPlayingRef.current = false
+
     drumMachine.stop()
 
     setIsPlaying(false)
     setCurrentStep(0)
-    setActiveBarIndex(0)
   }
 
   /**
@@ -602,7 +619,20 @@ export function useAudioSequencer(drumMachine) {
       }
 
       setBarCount(n)
-      setActiveBarIndex(0)
+
+      // Pagination is display-only.
+      //
+      // Preserve the current page when possible.
+      // When shrinking the phrase, clamp to the last remaining bar.
+      const nextBarIndex = Math.min(
+        activeBarIndexRef.current,
+        n - 1
+      )
+
+      activeBarIndexRef.current =
+        nextBarIndex
+
+      setActiveBarIndex(nextBarIndex)
     },
     [isPlaying]
   )
@@ -737,15 +767,26 @@ export function useAudioSequencer(drumMachine) {
   )
 
   // Memoize step change handler to prevent re-creating it on every render.
+  //
+  // currentStep always follows the transport.
+  // The displayed page only auto-follows while playback is actually running.
   const handleStepChange = useCallback(
     (globalStep) => {
+      // Ignore stop/reset notifications and any stale Tone.Draw callbacks
+      // after playback has ended.
+      //
+      // stop() owns the stopped transport position (step 0).
+      if (!isPlayingRef.current) return
+
       setCurrentStep(globalStep)
 
-      // Auto-follow: update activeBarIndex during playback.
       const newBarIndex = Math.floor(
         globalStep /
           currentStepsPerBar
       )
+
+      activeBarIndexRef.current =
+        newBarIndex
 
       setActiveBarIndex(newBarIndex)
     },

@@ -7,8 +7,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 12px;
+
+  /* Align first grid row with first InstrumentPanel row */
+  padding: 0 12px 16px;
 }
+
 
 /* ── Bar Pair Container ── */
 .bar-pair {
@@ -24,13 +27,15 @@
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
 }
 
+
 .bar-pair-rows {
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
-/* ── Column guides (grid background) ── */
+
+/* ── Column guides (smallest subdivision grid) ── */
 .column-guides {
   position: absolute;
   inset: 0;
@@ -45,10 +50,6 @@
   border-right: 1px solid var(--border-subtle);
 }
 
-.column-guides .col-guide.playhead {
-  background: rgba(56, 189, 248, 0.15);
-  border-right: none;
-}
 
 /* ── Track rows ── */
 .track-row {
@@ -56,7 +57,14 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  height: 56px;
+
+  /*
+   * Match InstrumentPanel row height.
+   * The block itself remains 56px tall below.
+   */
+  height: 72px;
+  flex-shrink: 0;
+
   border-bottom: 1px solid var(--border-subtle);
   padding: 0;
 }
@@ -73,15 +81,24 @@
   background: rgba(167, 139, 250, 0.03);
 }
 
+
 /* ── Track cells (blocks container) ── */
 .track-cells {
   display: flex;
   align-items: stretch;
   width: 100%;
-  height: 100%;
+
+  /*
+   * Keep the original block-row height.
+   * Since .track-row is 72px and align-items:center,
+   * this sits vertically centered against its instrument.
+   */
+  height: 56px;
+
   gap: 2px;
   padding: 0 4px;
 }
+
 
 /* ── Block (grouped nubs) ── */
 .block {
@@ -93,8 +110,12 @@
   border-radius: 4px;
   position: relative;
   min-width: 0;
-  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  box-shadow:
+    inset -1px -1px 2px rgba(0, 0, 0, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 
 .block-nubs {
   display: flex;
@@ -106,34 +127,61 @@
   border-radius: 4px 4px 0 0;
 }
 
+
 .nub {
-width: 32px;
+  width: 32px;
   height: 10px;
   border-radius: 50% 50% 3px 3px;
+
   /* Individual nub 3D effect */
   box-shadow:
     inset -1px -1px 2px rgba(0, 0, 0, 0.2),
     inset 0.5px 0.5px 1px rgba(255, 255, 255, 0.2),
     0 2px 3px rgba(0, 0, 0, 0.15);
-  }
+}
+
 
 .block-body {
   flex: 1;
   border-radius: 0 0 4px 4px;
-  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.15);
+
+  box-shadow:
+    inset -1px -1px 2px rgba(0, 0, 0, 0.15);
 }
+
 
 /* ── Guest blocks (orange) ── */
 .block--guest {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  filter:
+    drop-shadow(
+      0 1px 2px rgba(0, 0, 0, 0.1)
+    );
 }
 
-.block--guest:nth-child(1) { --guest-color: #f97316; }
-.block--guest:nth-child(2) { --guest-color: #f86119; }
-.block--guest:nth-child(3) { --guest-color: #f55018; }
-.block--guest:nth-child(4) { --guest-color: #f24020; }
-.block--guest:nth-child(5) { --guest-color: #ef3325; }
-.block--guest:nth-child(n + 6) { --guest-color: #ef4444; }
+.block--guest:nth-child(1) {
+  --guest-color: #f97316;
+}
+
+.block--guest:nth-child(2) {
+  --guest-color: #f86119;
+}
+
+.block--guest:nth-child(3) {
+  --guest-color: #f55018;
+}
+
+.block--guest:nth-child(4) {
+  --guest-color: #f24020;
+}
+
+.block--guest:nth-child(5) {
+  --guest-color: #ef3325;
+}
+
+.block--guest:nth-child(n + 6) {
+  --guest-color: #ef4444;
+}
+
 
 .block--guest .block-nubs {
   background: var(--guest-color);
@@ -145,21 +193,38 @@ width: 32px;
 }
 
 .nub--guest {
-  /* Default styling inherited from .nub base class */
-  /* background: linear-gradient(180deg, #fbb75a 0%, var(--guest-color) 100%); */
   display: block;
 }
 
+
 /* ── Host blocks (purple/violet) ── */
 .block--host {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  filter:
+    drop-shadow(
+      0 1px 2px rgba(0, 0, 0, 0.1)
+    );
 }
 
-.block--host:nth-child(1) { --host-color: #3b3fce; }
-.block--host:nth-child(2) { --host-color: #6244be; }
-.block--host:nth-child(3) { --host-color: #8649ae; }
-.block--host:nth-child(4) { --host-color: #a855f7; }
-.block--host:nth-child(5) { --host-color: #b56afb; }
+.block--host:nth-child(1) {
+  --host-color: #3b3fce;
+}
+
+.block--host:nth-child(2) {
+  --host-color: #6244be;
+}
+
+.block--host:nth-child(3) {
+  --host-color: #8649ae;
+}
+
+.block--host:nth-child(4) {
+  --host-color: #a855f7;
+}
+
+.block--host:nth-child(5) {
+  --host-color: #b56afb;
+}
+
 
 .block--host .block-nubs {
   background: var(--host-color);
@@ -171,22 +236,99 @@ width: 32px;
 }
 
 .nub--host {
-  /* Default styling inherited from .nub base class */
-  /* background: linear-gradient(180deg, #818cf8 0%, var(--host-color) 100%); */
   display: block;
 }
 
-/* ── Playhead line ── */
-.playhead-line {
+
+/* ── Host-beat playhead ── */
+
+/*
+ * Full-size transparent overlay across all six rows.
+ *
+ * It does not itself determine horizontal sizing.
+ * Its inner flex row mirrors .track-cells exactly.
+ */
+.playhead-host-grid {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.8), rgba(56, 189, 248, 0.4));
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
-  z-index: 10;
+  inset: 0;
+  z-index: 5;
   pointer-events: none;
 }
+
+
+/*
+ * IMPORTANT:
+ *
+ * gap and horizontal padding intentionally match .track-cells.
+ *
+ * Because each playhead slot also uses the same --span flex-grow,
+ * the visual beat highlight lines up precisely with the Host blocks.
+ */
+.playhead-host-grid-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+
+/*
+ * One invisible slot for every Host/main-beat block.
+ */
+.playhead-host-slot {
+  position: relative;
+
+  flex-grow: var(--span, 1);
+  flex-shrink: 1;
+  flex-basis: 0;
+
+  min-width: 0;
+}
+
+
+/*
+ * Highlight the complete current Host beat vertically
+ * across all instrument rows.
+ */
+.playhead-host-slot--active {
+  background:
+    rgba(56, 189, 248, 0.12);
+
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.08);
+}
+
+
+/*
+ * The actual playhead line sits at the START of the
+ * currently active Host/main-beat block.
+ *
+ * Since the active Host slot does not change until
+ * currentStep enters the next Host block, the line
+ * visually "jumps" beat by beat.
+ */
+.playhead-beat-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 2px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(56, 189, 248, 0.85),
+      rgba(56, 189, 248, 0.45)
+    );
+
+  box-shadow:
+    0 0 6px rgba(56, 189, 248, 0.6);
+
+  pointer-events: none;
+}
+
 
 /* ── Empty cells ── */
 .cell--empty {
@@ -197,12 +339,63 @@ width: 32px;
   flex: 1;
 }
 
-/* Nub active state: step is ON for selected instrument */
+
+/* Nub active state: step is ON */
 .nub--active {
-  background: rgba(255, 255, 255, 0.6);
+  background:
+    rgba(255, 255, 255, 0.6);
 }
 
-/* Nub inactive state: step is OFF for selected instrument */
-/* .nub--inactive {
-  //inherit from .nub
-} */
+
+/* Nub inactive state: step is OFF */
+/*
+.nub--inactive {
+  inherit from .nub
+}
+*/
+
+.bar-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.bar-page-btn {
+  background: none;
+  border: 1px solid var(--border-dim);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+.bar-page-btn--active {
+  background: var(--bg-cell);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+/* ── Mobile landscape ── */
+@media (max-width: 768px) and (orientation: landscape) {
+  /*
+   * InstrumentPanel rows become 58px tall on mobile,
+   * so use the same alignment slot here.
+   */
+  .track-row {
+    height: 58px;
+  }
+
+  /*
+   * Keep block height unchanged.
+   * 56px centered inside a 58px row leaves 1px above/below.
+   */
+  .track-cells {
+    height: 56px;
+  }
+
+  .rhythm-grid-phrase {
+    padding-top: 0;
+  }
+}
