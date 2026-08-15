@@ -2,171 +2,426 @@ import React, { useMemo } from 'react'
 import { useAudioSequencerContext } from '../context/AudioSequencerContext'
 import './RhythmGrid.css'
 
+const INSTRUMENTS = [
+  { id: 'keys', label: 'Keys' },
+  { id: 'guitar', label: 'Guitar' },
+  { id: 'bass', label: 'Bass' },
+  { id: 'hihat', label: 'Hi-Hat' },
+  { id: 'snare', label: 'Snare' },
+  { id: 'kick', label: 'Kick' },
+]
+
 /**
- * For each grouping size, create an array of nub positions (1-indexed for display).
- * This is used to render individual nubs within each block.
+ * Convert grouping sizes into render-ready blocks with a local step offset.
+ *
+ * Example:
+ * [4, 4, 4, 4] -> offsets 0, 4, 8, 12.
  */
-function buildGroupNubs(groupSizes) {
-  const groups = []
-  for (const size of groupSizes) {
-    const nubs = Array.from({ length: size }, (_, i) => i + 1)
-    groups.push(nubs)
-  }
-  return groups
+function buildBlocks(groupSizes) {
+  let offset = 0
+
+  return (groupSizes || []).map((size) => {
+    const block = {
+      size,
+      offset,
+      nubs: Array.from(
+        { length: size },
+        (_, i) => i
+      ),
+    }
+
+    offset += size
+
+    return block
+  })
 }
-//Visual representation of the rhythm grid, showing host and guest groupings per bar, with a playhead indicator.
+
+/**
+ * Six-track rhythm grid.
+ *
+ * - One visible bar at a time.
+ * - One row per instrument, in InstrumentPanel order.
+ * - Each row independently uses Host or Guest grouping based on roleAssignment.
+ * - Every row displays its real pattern.
+ * - Only the selected instrument is editable.
+ * - During playback, activeBarIndex auto-follows transport in useAudioSequencer.
+ * - While stopped, pagination changes display only and never moves currentStep.
+ *
+ * Playhead:
+ * - currentStep still advances at the smallest subdivision.
+ * - The visual playhead snaps to the Host/main-beat block containing currentStep.
+ * - It remains at that Host block's start until the next Host beat begins.
+ * - The highlighted region spans the complete Host block width.
+ */
 function RhythmGridComponent() {
-  const { currentStep, barCount, activeBarIndex, currentGroupings, currentStepsPerBar, selectedInstrument, roleAssignment, patterns, setGridCell } =
-    useAudioSequencerContext()
+  const {
+    currentStep,
+    isPlaying,
+    barCount,
+    activeBarIndex,
+    goToBar,
+    currentGroupings,
+    currentStepsPerBar,
+    selectedInstrument,
+    roleAssignment,
+    patterns,
+    setGridCell,
+  } = useAudioSequencerContext()
 
-  // Local playhead: steps within the active bar
-  const localPlayhead = currentStep % currentStepsPerBar
-  const playheadInThisBar = Math.floor(currentStep / currentStepsPerBar) === activeBarIndex
+  const safeStepsPerBar = Math.max(
+    1,
+    currentStepsPerBar || 1
+  )
 
+  /*
+   * Transport position still progresses by subdivision.
+   */
+  const playheadBarIndex = Math.floor(
+    currentStep / safeStepsPerBar
+  )
 
-  // Handle nub click to toggle step
-  const handleNubClick = (absoluteStep) => {
-    if (!selectedInstrument) return
-    const current = patterns[selectedInstrument]?.[absoluteStep] ?? false
-    setGridCell(selectedInstrument, absoluteStep, !current)
-  }
+  const localPlayhead =
+    currentStep % safeStepsPerBar
 
-  // Memoize nub generation for guest and host groupings
-  const { guestGroupNubsByBar, hostGroupNubs } = useMemo(() => {
-    const guestByBar = (currentGroupings.guest || []).map((groupings) =>
-      buildGroupNubs(groupings)
+  const playheadInDisplayedBar =
+    playheadBarIndex === activeBarIndex
+
+  /*
+   * Host blocks define the visual/main-beat grid.
+   *
+   * Examples might be:
+   * 4/4 16ths      -> [4, 4, 4, 4]
+   * 4/4 triplets   -> [3, 3, 3, 3]
+   *
+   * We do not hardcode those values here — the generated
+   * currentGroupings.host remains the source of truth.
+   */
+  const hostBlocks = useMemo(
+    () =>
+      buildBlocks(
+        currentGroupings.host || []
+      ),
+    [currentGroupings.host]
+  )
+
+  const guestBlocks = useMemo(
+    () =>
+      buildBlocks(
+        currentGroupings.guest?.[
+          activeBarIndex
+        ] || []
+      ),
+    [
+      currentGroupings.guest,
+      activeBarIndex,
+    ]
+  )
+
+  /*
+   * Determine which Host/main-beat block currently contains
+   * the transport step.
+   *
+   * The visual playhead only changes when this index changes.
+   */
+  const activeHostBeatIndex = useMemo(() => {
+    if (hostBlocks.length === 0) {
+      return -1
+    }
+
+    const index = hostBlocks.findIndex(
+      ({ offset, size }) =>
+        localPlayhead >= offset &&
+        localPlayhead < offset + size
     )
-    const host = buildGroupNubs(currentGroupings.host || [])
-    return { guestGroupNubsByBar: guestByBar, hostGroupNubs: host }
-  }, [currentGroupings])
+
+    /*
+     * Normally there will always be a match because the
+     * Host blocks span the full bar. Fall back to the first
+     * block defensively.
+     */
+    return index >= 0 ? index : 0
+  }, [hostBlocks, localPlayhead])
+
+  const barStartStep =
+    activeBarIndex *
+    safeStepsPerBar
+
+  const handleNubClick = (
+    instrumentId,
+    absoluteStep
+  ) => {
+    if (
+      selectedInstrument !== instrumentId
+    ) {
+      return
+    }
+
+    const current =
+      patterns[instrumentId]?.[
+        absoluteStep
+      ] ?? false
+
+    setGridCell(
+      instrumentId,
+      absoluteStep,
+      !current
+    )
+  }
 
   return (
     <div className="rhythm-grid-phrase">
-      {/* Render each bar as a bar-pair (guest row + host row) */}
-      {Array.from({ length: barCount }).map((_, barIndex) => {
-        const isActiveBar = barIndex === activeBarIndex
-        const guestGroupings = currentGroupings.guest?.[barIndex] || []
-        const guestGroupNubs = guestGroupNubsByBar[barIndex] || []
-
-        return (
+      <div
+        className="bar-pair"
+        data-bar={activeBarIndex}
+        data-active="true"
+      >
+        <div className="bar-pair-rows">
+          {/*
+           * Smallest-unit column guides remain visible,
+           * but they no longer own the playhead highlight.
+           */}
           <div
-            key={barIndex}
-            className="bar-pair"
-            data-bar={barIndex}
-            data-active={isActiveBar}
+            className="column-guides"
+            aria-hidden="true"
           >
-            <div className="bar-pair-rows">
-              {/* Column guide lines — one per step in this bar */}
-              <div className="column-guides" aria-hidden="true">
-                {Array.from({ length: currentStepsPerBar }).map((_, stepIdx) => (
-                  <div
-                    key={stepIdx}
-                    className={`col-guide ${isActiveBar && stepIdx === localPlayhead ? 'playhead' : ''}`}
-                  />
-                ))}
-              </div>
+            {Array.from({
+              length: safeStepsPerBar,
+            }).map((_, stepIdx) => (
+              <div
+                key={stepIdx}
+                className="col-guide"
+              />
+            ))}
+          </div>
 
-              {/* Guest row */}
-              <div className="track-row track-row--guest">
-                <div className="track-cells">
-                  {guestGroupings.length > 0 ? (
-                    guestGroupings.map((groupSize, gi) => {
-                      const nubs = guestGroupNubs[gi] || []
-                      // Compute block offset (sum of group sizes before this group)
-                      let blockOffset = 0
-                      for (let j = 0; j < gi; j++) {
-                        blockOffset += guestGroupings[j]
-                      }
-                      
-                      // Determine if this row matches the selected instrument's role
-                      const isSelectedRow = selectedInstrument !== null &&
-                        roleAssignment[selectedInstrument] === 'guest'
-                      
+          {INSTRUMENTS.map(
+            ({ id, label }) => {
+              const role =
+                roleAssignment[id] ||
+                'host'
+
+              const blocks =
+                role === 'guest'
+                  ? guestBlocks
+                  : hostBlocks
+
+              const isSelected =
+                selectedInstrument === id
+
+              return (
+                <div
+                  key={id}
+                  className={`track-row track-row--${role}${
+                    isSelected
+                      ? ' track-row--selected'
+                      : ''
+                  }`}
+                  data-instrument={id}
+                  data-role={role}
+                  data-selected={
+                    isSelected
+                  }
+                  aria-label={`${label} ${role} pattern`}
+                >
+                  <div className="track-cells">
+                    {blocks.length > 0 ? (
+                      blocks.map(
+                        (
+                          {
+                            size,
+                            offset,
+                            nubs,
+                          },
+                          blockIndex
+                        ) => (
+                          <div
+                            key={`${id}-${blockIndex}`}
+                            className={`block block--${role}`}
+                            style={{
+                              '--span':
+                                size,
+                            }}
+                          >
+                            <div className="block-nubs">
+                              {nubs.map(
+                                (
+                                  localStepInBlock
+                                ) => {
+                                  const absoluteStep =
+                                    barStartStep +
+                                    offset +
+                                    localStepInBlock
+
+                                  const isActive =
+                                    patterns[
+                                      id
+                                    ]?.[
+                                      absoluteStep
+                                    ] ===
+                                    true
+
+                                  const isInactive =
+                                    !isActive
+
+                                  return (
+                                    <div
+                                      key={
+                                        localStepInBlock
+                                      }
+                                      className={`nub nub--${role}${
+                                        isActive
+                                          ? ' nub--active'
+                                          : ''
+                                      }${
+                                        isInactive
+                                          ? ' nub--inactive'
+                                          : ''
+                                      }`}
+                                      onClick={
+                                        isSelected
+                                          ? () =>
+                                              handleNubClick(
+                                                id,
+                                                absoluteStep
+                                              )
+                                          : undefined
+                                      }
+                                      style={
+                                        isSelected
+                                          ? {
+                                              cursor:
+                                                'pointer',
+                                            }
+                                          : undefined
+                                      }
+                                      aria-label={
+                                        isSelected
+                                          ? `${label} step ${
+                                              offset +
+                                              localStepInBlock +
+                                              1
+                                            } ${
+                                              isActive
+                                                ? 'on'
+                                                : 'off'
+                                            }`
+                                          : undefined
+                                      }
+                                    />
+                                  )
+                                }
+                              )}
+                            </div>
+
+                            <div className="block-body" />
+                          </div>
+                        )
+                      )
+                    ) : (
+                      <div className="cell cell--empty" />
+                    )}
+                  </div>
+                </div>
+              )
+            }
+          )}
+
+          {/*
+           * Host-beat playhead overlay.
+           *
+           * This deliberately uses the same:
+           * - flex-grow spans
+           * - 2px gap
+           * - 4px horizontal padding
+           *
+           * as .track-cells.
+           *
+           * Therefore the highlight lines up exactly with Host
+           * block boundaries rather than approximating them
+           * with percentage positioning.
+           */}
+          {playheadInDisplayedBar &&
+            activeHostBeatIndex >= 0 && (
+              <div
+                className="playhead-host-grid"
+                aria-hidden="true"
+              >
+                <div className="playhead-host-grid-inner">
+                  {hostBlocks.map(
+                    (
+                      { size },
+                      blockIndex
+                    ) => {
+                      const isCurrentBeat =
+                        blockIndex ===
+                        activeHostBeatIndex
+
                       return (
                         <div
-                          key={gi}
-                          className="block block--guest"
-                          style={{ '--span': groupSize }}
+                          key={blockIndex}
+                          className={`playhead-host-slot${
+                            isCurrentBeat
+                              ? ' playhead-host-slot--active'
+                              : ''
+                          }`}
+                          style={{
+                            '--span':
+                              size,
+                          }}
                         >
-                          <div className="block-nubs">
-                            {nubs.map((step, si) => {
-                              const absoluteStep = barIndex * currentStepsPerBar + blockOffset + si
-                              const isActive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === true
-                              const isInactive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === false
-                              return (
-                                <div
-                                  key={si}
-                                  className={`nub nub--guest${isActive ? ' nub--active' : ''}${isInactive ? ' nub--inactive' : ''}`}
-                                  onClick={isSelectedRow ? () => handleNubClick(absoluteStep) : undefined}
-                                  style={isSelectedRow ? { cursor: 'pointer' } : undefined}
-                                />
-                              )
-                            })}
-                          </div>
-                          <div className="block-body" />
+                          {isCurrentBeat && (
+                            <div className="playhead-beat-line" />
+                          )}
                         </div>
                       )
-                    })
-                  ) : (
-                    <div className="cell cell--empty" />
+                    }
                   )}
                 </div>
               </div>
+            )}
+        </div>
+      </div>
 
-              {/* Host row */}
-              <div className="track-row track-row--host">
-                <div className="track-cells">
-                  {(currentGroupings.host || []).map((groupSize, gi) => {
-                    const nubs = hostGroupNubs[gi] || []
-                    // Compute block offset (sum of group sizes before this group)
-                    let blockOffset = 0
-                    for (let j = 0; j < gi; j++) {
-                      blockOffset += (currentGroupings.host || [])[j]
-                    }
-                    
-                    // Determine if this row matches the selected instrument's role
-                    const isSelectedRow = selectedInstrument !== null &&
-                      roleAssignment[selectedInstrument] === 'host'
-                    
-                    return (
-                      <div
-                        key={gi}
-                        className="block block--host"
-                        style={{ '--span': groupSize }}
-                      >
-                        <div className="block-nubs">
-                          {nubs.map((step, si) => {
-                            const absoluteStep = barIndex * currentStepsPerBar + blockOffset + si
-                            const isActive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === true
-                            const isInactive = isSelectedRow && patterns[selectedInstrument]?.[absoluteStep] === false
-                            
-                            return (
-                              <div
-                                key={si}
-                                className={`nub nub--host${isActive ? ' nub--active' : ''}${isInactive ? ' nub--inactive' : ''}`}
-                                onClick={isSelectedRow ? () => handleNubClick(absoluteStep) : undefined}
-                                style={isSelectedRow ? { cursor: 'pointer' } : undefined}
-                              />
-                            )
-                          })}
-                        </div>
-                        <div className="block-body" />
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              {/* Playhead — only rendered inside active bar-pair */}
-              {isActiveBar && (
-                <div
-                  className="playhead-line"
-                  style={{ left: `${(localPlayhead / currentStepsPerBar) * 100}%` }}
-                />
-              )}
-            </div>
-          </div>
-        )
-      })}
+      {barCount > 1 && (
+        <nav
+          className="bar-pagination"
+          aria-label="Bar pages"
+        >
+          {Array.from({
+            length: barCount,
+          }).map((_, barIndex) => {
+            const isCurrentPage =
+              barIndex ===
+              activeBarIndex
+
+            return (
+              <button
+                key={barIndex}
+                type="button"
+                className={`bar-page-btn${
+                  isCurrentPage
+                    ? ' bar-page-btn--active'
+                    : ''
+                }`}
+                onClick={() =>
+                  goToBar(barIndex)
+                }
+                disabled={isPlaying}
+                aria-current={
+                  isCurrentPage
+                    ? 'page'
+                    : undefined
+                }
+                aria-label={`Show bar ${
+                  barIndex + 1
+                }`}
+              >
+                {barIndex + 1}
+              </button>
+            )
+          })}
+        </nav>
+      )}
     </div>
   )
 }
