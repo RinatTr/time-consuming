@@ -1,11 +1,9 @@
 # Playground 
 ### 🛠️ Prototype in Progress
 
-A browser-based polyrhythmic drum sequencer. Layer a 3-step guest pattern against a 4/4 host grid and hear how the two meters drift and realign across multiple bars.
+A system that lets the user experience the temporal relationship between independent rhythmic structures. Layer a 3-step guest pattern against a 4/4 host grid and hear how the two meters drift and realign across multiple bars.
 
-Currently in private prototype phase; visual demo available below:
-
-https://github.com/user-attachments/assets/d9bfd9e4-18b2-4318-8e37-3527681e184c
+Currently in private prototype phase; [live demo](https://time-consuming.vercel.app)
 
 ## What it does
 
