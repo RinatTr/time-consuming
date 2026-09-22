@@ -43,7 +43,7 @@ function buildBlocks(groupSizes) {
  * - One row per instrument, in InstrumentPanel order.
  * - Each row independently uses Host or Guest grouping based on roleAssignment.
  * - Every row displays its real pattern.
- * - Only the selected instrument is editable.
+ * - Every nub across every row is editable, regardless of selection.
  * - During playback, activeBarIndex auto-follows transport in useAudioSequencer.
  * - While stopped, pagination changes display only and never moves currentStep.
  *
@@ -146,16 +146,15 @@ function RhythmGridComponent() {
     activeBarIndex *
     safeStepsPerBar
 
+  /*
+   * Nub toggling is open across the entire grid — no
+   * selection gate. The instrument is already known from
+   * which nub was clicked.
+   */
   const handleNubClick = (
     instrumentId,
     absoluteStep
   ) => {
-    if (
-      selectedInstrument !== instrumentId
-    ) {
-      return
-    }
-
     const current =
       patterns[instrumentId]?.[
         absoluteStep
@@ -277,36 +276,25 @@ function RhythmGridComponent() {
                                           ? ' nub--inactive'
                                           : ''
                                       }`}
-                                      onClick={
-                                        isSelected
-                                          ? () =>
-                                              handleNubClick(
-                                                id,
-                                                absoluteStep
-                                              )
-                                          : undefined
+                                      onClick={() =>
+                                        handleNubClick(
+                                          id,
+                                          absoluteStep
+                                        )
                                       }
-                                      style={
-                                        isSelected
-                                          ? {
-                                              cursor:
-                                                'pointer',
-                                            }
-                                          : undefined
-                                      }
-                                      aria-label={
-                                        isSelected
-                                          ? `${label} step ${
-                                              offset +
-                                              localStepInBlock +
-                                              1
-                                            } ${
-                                              isActive
-                                                ? 'on'
-                                                : 'off'
-                                            }`
-                                          : undefined
-                                      }
+                                      style={{
+                                        cursor:
+                                          'pointer',
+                                      }}
+                                      aria-label={`${label} step ${
+                                        offset +
+                                        localStepInBlock +
+                                        1
+                                      } ${
+                                        isActive
+                                          ? 'on'
+                                          : 'off'
+                                      }`}
                                     />
                                   )
                                 }
