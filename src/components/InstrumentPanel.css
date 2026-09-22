@@ -39,10 +39,6 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-.instrument-row:active {
-  cursor: grabbing;
-}
-
 
 .instrument-icon {
   width: 64px;
@@ -132,9 +128,9 @@
   }
 }
 
-/* Persistent selection highlight — distinct from the 200ms active flash */
+/* Persistent selection highlight */
 .instrument-row--selected {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .instrument-row--selected .instrument-label {
