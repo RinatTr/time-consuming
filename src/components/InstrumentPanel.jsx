@@ -19,7 +19,7 @@ const instruments = [
 ]
 
 export default function InstrumentPanel() {
-  const { drumMachine, roleAssignment, setInstrumentRole, selectedInstrument, selectInstrument } = useAudioSequencerContext()
+  const { drumMachine, roleAssignment, setInstrumentRole, mutedInstruments, toggleInstrumentMute, selectedInstrument, selectInstrument } = useAudioSequencerContext()
   const [activeInstrument, setActiveInstrument] = useState(null)
 
   const handleIconClick = async (instrumentId) => {
@@ -35,6 +35,11 @@ export default function InstrumentPanel() {
     } catch (error) {
       console.error(`Failed to preview instrument "${instrumentId}":`, error)
     }
+  }
+
+  const handleMuteToggle = (instrumentId, e) => {
+    e.stopPropagation()
+    toggleInstrumentMute(instrumentId)
   }
 
   const handleRoleToggle = (instrumentId, e) => {
@@ -71,6 +76,15 @@ export default function InstrumentPanel() {
                 title={`Click to preview ${label}`}
               />
               <span className="instrument-label">{label}</span>
+              <button
+                className={`mute-toggle${mutedInstruments[id] ? ' mute-toggle--muted' : ''}`}
+                onClick={(e) => handleMuteToggle(id, e)}
+                aria-pressed={mutedInstruments[id]}
+                aria-label={`${mutedInstruments[id] ? 'Unmute' : 'Mute'} ${label}`}
+                title={mutedInstruments[id] ? `${label} muted. Click to unmute.` : `${label} unmuted. Click to mute.`}
+              >
+                m
+              </button>
               <button
                 className={`role-toggle role-toggle--${role}`}
                 onClick={(e) => handleRoleToggle(id, e)}

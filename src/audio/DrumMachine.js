@@ -68,6 +68,19 @@ class DrumMachine {
       keys: new Array(80).fill(false),
       guitar: new Array(80).fill(false),
     }
+
+    // Per-instrument mute state. Independent of gridState/patterns and of
+    // Host/Guest role assignment. Checked once, at the top of
+    // triggerInstrument(), so it silences both sequencer playback and manual
+    // preview triggers through a single gate.
+    this.mutedState = {
+      kick: false,
+      snare: false,
+      hihat: false,
+      bass: false,
+      keys: false,
+      guitar: false,
+    }
   }
 
   /**
@@ -177,6 +190,7 @@ class DrumMachine {
    */
   triggerInstrument(instrumentName, time = Tone.now(), maxDuration = null) {
     if (!this.isInitialized) return
+    if (this.mutedState[instrumentName]) return
 
     const sampler = this.synths[instrumentName]
     if (!sampler) {
@@ -223,6 +237,27 @@ class DrumMachine {
    */
   getInstrumentVolume(instrumentName) {
     return this.synths[instrumentName]?.volume.value ?? null
+  }
+
+  /**
+   * Set whether an instrument is muted.
+   *
+   * Silences both sequencer playback and manual preview triggers, since both
+   * paths converge on triggerInstrument(), which checks this state.
+   *
+   * A hit already ringing out via triggerAttackRelease's scaled tail is not
+   * cut short when mute engages mid-decay — only future triggers are gated.
+   */
+  setInstrumentMuted(instrumentName, isMuted) {
+    if (this.mutedState[instrumentName] === undefined) return
+    this.mutedState[instrumentName] = isMuted
+  }
+
+  /**
+   * Get whether an instrument is currently muted.
+   */
+  isInstrumentMuted(instrumentName) {
+    return this.mutedState[instrumentName] ?? false
   }
 
   /**

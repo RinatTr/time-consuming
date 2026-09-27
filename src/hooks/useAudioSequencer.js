@@ -21,6 +21,18 @@ const DEFAULT_ROLE_ASSIGNMENT = {
   guitar: 'guest',
 }
 
+// Mute is independent of role assignment and of pattern data. It resets to
+// all-unmuted only on a full remount (never on config changes, role toggles,
+// or Play/Stop).
+const DEFAULT_MUTED_STATE = {
+  kick: false,
+  snare: false,
+  hihat: false,
+  bass: false,
+  keys: false,
+  guitar: false,
+}
+
 /**
  * Generate both role variants for every instrument for one musical config.
  * These generated patterns become the mutable in-memory working copies for
@@ -116,9 +128,14 @@ export function useAudioSequencer(drumMachine) {
     DEFAULT_ROLE_ASSIGNMENT
   )
 
+  const [mutedInstruments, setMutedInstruments] = useState(
+    DEFAULT_MUTED_STATE
+  )
+
   // Keep synchronous refs for callbacks that must update the audio engine
   // immediately, without waiting for React state to commit.
   const roleAssignmentRef = useRef(DEFAULT_ROLE_ASSIGNMENT)
+  const mutedInstrumentsRef = useRef(DEFAULT_MUTED_STATE)
   const configRef = useRef(DEFAULT_CONFIG)
   const bpmRef = useRef(100)
 
@@ -766,6 +783,41 @@ export function useAudioSequencer(drumMachine) {
     [drumMachine]
   )
 
+  /**
+   * Toggle one instrument's mute state.
+   *
+   * Independent of role assignment and pattern data. Allowed during
+   * playback. Silences both sequencer playback and manual preview, since
+   * DrumMachine.triggerInstrument() checks mutedState for both paths.
+   */
+  const toggleInstrumentMute = useCallback(
+    (instrumentId) => {
+      const nextMuted =
+        !mutedInstrumentsRef.current[instrumentId]
+
+      const nextMutedInstruments = {
+        ...mutedInstrumentsRef.current,
+
+        [instrumentId]: nextMuted,
+      }
+
+      // Update ref synchronously so an immediately-following trigger
+      // (sequencer step or manual preview) sees the new mute state.
+      mutedInstrumentsRef.current =
+        nextMutedInstruments
+
+      setMutedInstruments(
+        nextMutedInstruments
+      )
+
+      drumMachine.setInstrumentMuted(
+        instrumentId,
+        nextMuted
+      )
+    },
+    [drumMachine]
+  )
+
   // Memoize step change handler to prevent re-creating it on every render.
   //
   // currentStep always follows the transport.
@@ -821,6 +873,7 @@ export function useAudioSequencer(drumMachine) {
     hostMeter,
     subdivision,
     roleAssignment,
+    mutedInstruments,
     currentGroupings,
     currentStepsPerBar,
     selectedInstrument,
@@ -840,6 +893,7 @@ export function useAudioSequencer(drumMachine) {
     updateHostMeter,
     updateSubdivision,
     setInstrumentRole,
+    toggleInstrumentMute,
 
     // Grid methods
     setGridCell,
